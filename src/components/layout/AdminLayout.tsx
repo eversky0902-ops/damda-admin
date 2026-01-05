@@ -1,5 +1,6 @@
+import { useEffect } from 'react'
 import { Outlet, useNavigate, useLocation } from 'react-router-dom'
-import { Layout, Menu, theme, Button, Avatar, Dropdown, type MenuProps } from 'antd'
+import { Layout, Menu, theme, Avatar, Dropdown, type MenuProps } from 'antd'
 import {
   DashboardOutlined,
   ShopOutlined,
@@ -10,15 +11,13 @@ import {
   CalendarOutlined,
   CreditCardOutlined,
   FileTextOutlined,
-  PrinterOutlined,
   SettingOutlined,
-  MenuFoldOutlined,
-  MenuUnfoldOutlined,
   LogoutOutlined,
 } from '@ant-design/icons'
 import { useUIStore } from '@/stores/uiStore'
+import { useAuthStore } from '@/stores/authStore'
 
-const { Header, Sider, Content } = Layout
+const { Sider, Content } = Layout
 
 // 메뉴 아이템 정의
 const menuItems: MenuProps['items'] = [
@@ -75,24 +74,32 @@ const menuItems: MenuProps['items'] = [
     ],
   },
   {
-    key: '/print-service',
-    icon: <PrinterOutlined />,
-    label: '행정서비스',
-  },
-  {
     key: '/settings',
     icon: <SettingOutlined />,
     label: '설정',
+    children: [
+      { key: '/settings/service', label: '서비스 설정' },
+      { key: '/settings/logs', label: '활동 로그' },
+    ],
   },
 ]
 
 export function AdminLayout() {
   const navigate = useNavigate()
   const location = useLocation()
-  const { sidebarCollapsed, toggleSidebar } = useUIStore()
+  const { sidebarCollapsed } = useUIStore()
+  const { admin, isAuthenticated, isSessionValid, logout } = useAuthStore()
   const {
-    token: { colorBgContainer, borderRadiusLG },
+    token: { borderRadiusLG },
   } = theme.useToken()
+
+  // 인증 가드
+  useEffect(() => {
+    if (!isAuthenticated || !isSessionValid()) {
+      logout()
+      navigate('/login', { replace: true })
+    }
+  }, [isAuthenticated, isSessionValid, logout, navigate])
 
   const handleMenuClick: MenuProps['onClick'] = ({ key }) => {
     navigate(key)
@@ -117,9 +124,14 @@ export function AdminLayout() {
 
   const handleUserMenuClick: MenuProps['onClick'] = ({ key }) => {
     if (key === 'logout') {
-      // TODO: 로그아웃 처리
+      logout()
       navigate('/login')
     }
+  }
+
+  // 인증되지 않은 경우 렌더링 방지
+  if (!isAuthenticated) {
+    return null
   }
 
   return (
@@ -128,70 +140,92 @@ export function AdminLayout() {
         trigger={null}
         collapsible
         collapsed={sidebarCollapsed}
-        theme="light"
+        theme="dark"
         style={{
-          overflow: 'auto',
+          overflow: 'hidden',
           height: '100vh',
           position: 'fixed',
           left: 0,
           top: 0,
           bottom: 0,
-          borderRight: '1px solid #f0f0f0',
         }}
       >
         <div style={{
-          height: 64,
           display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          borderBottom: '1px solid #f0f0f0',
+          flexDirection: 'column',
+          height: '100%',
         }}>
-          <h1 style={{
-            margin: 0,
-            fontSize: sidebarCollapsed ? 16 : 20,
-            fontWeight: 700,
-            color: '#1890ff',
+          <div style={{
+            height: 64,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
+            flexShrink: 0,
           }}>
-            {sidebarCollapsed ? '담' : '담다 Admin'}
-          </h1>
+            <img
+              src="/logo-white.svg"
+              alt="담다"
+              style={{
+                height: sidebarCollapsed ? 28 : 36,
+                transition: 'height 0.2s',
+              }}
+            />
+          </div>
+          <div style={{ flex: 1, overflow: 'auto' }}>
+            <Menu
+              mode="inline"
+              theme="dark"
+              selectedKeys={[location.pathname]}
+              defaultOpenKeys={['/content']}
+              items={menuItems}
+              onClick={handleMenuClick}
+              style={{ borderRight: 0 }}
+            />
+          </div>
+          <div style={{
+            borderTop: '1px solid rgba(255, 255, 255, 0.1)',
+            padding: sidebarCollapsed ? '12px 8px' : '12px 16px',
+            flexShrink: 0,
+          }}>
+            <Dropdown menu={{ items: userMenuItems, onClick: handleUserMenuClick }} placement="topRight" trigger={['click']}>
+              <div style={{
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 8,
+                padding: '8px',
+                borderRadius: 6,
+                transition: 'background 0.2s',
+              }}
+              onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)'}
+              onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+              >
+                <Avatar size={sidebarCollapsed ? 32 : 36} icon={<UserOutlined />} style={{ flexShrink: 0 }} />
+                {!sidebarCollapsed && (
+                  <div style={{ overflow: 'hidden', flex: 1 }}>
+                    <div style={{ color: '#fff', fontSize: 14, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                      {admin?.name || '관리자'}
+                    </div>
+                    {admin?.role === 'super_admin' && (
+                      <div style={{ fontSize: 12, color: '#F8B737' }}>최고관리자</div>
+                    )}
+                  </div>
+                )}
+              </div>
+            </Dropdown>
+          </div>
         </div>
-        <Menu
-          mode="inline"
-          selectedKeys={[location.pathname]}
-          defaultOpenKeys={['/content']}
-          items={menuItems}
-          onClick={handleMenuClick}
-          style={{ borderRight: 0 }}
-        />
       </Sider>
-      <Layout style={{ marginLeft: sidebarCollapsed ? 80 : 200, transition: 'all 0.2s' }}>
-        <Header style={{
-          padding: '0 24px',
-          background: colorBgContainer,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          borderBottom: '1px solid #f0f0f0',
-        }}>
-          <Button
-            type="text"
-            icon={sidebarCollapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
-            onClick={toggleSidebar}
-          />
-          <Dropdown menu={{ items: userMenuItems, onClick: handleUserMenuClick }} placement="bottomRight">
-            <div style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8 }}>
-              <Avatar icon={<UserOutlined />} />
-              <span>관리자</span>
-            </div>
-          </Dropdown>
-        </Header>
+      <Layout style={{ marginLeft: sidebarCollapsed ? 80 : 200, transition: 'all 0.2s', background: '#f5f5f5' }}>
         <Content
           style={{
-            margin: 24,
-            padding: 24,
-            minHeight: 280,
-            background: colorBgContainer,
+            margin: 16,
+            padding: 16,
+            minHeight: 'calc(100vh - 32px)',
+            background: '#fff',
             borderRadius: borderRadiusLG,
+            boxShadow: '0 1px 2px rgba(0, 0, 0, 0.03)',
           }}
         >
           <Outlet />

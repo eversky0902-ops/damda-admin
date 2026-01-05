@@ -2,37 +2,45 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Card, Form, Input, Button, message } from 'antd'
 import { UserOutlined, LockOutlined } from '@ant-design/icons'
-import { supabase } from '@/lib/supabase'
+import { login } from '@/services/authService'
 import { useAuthStore } from '@/stores/authStore'
+import { supabase } from '@/lib/supabase'
 
 interface LoginFormValues {
-  email: string
+  loginId: string
   password: string
 }
 
 export function LoginPage() {
   const navigate = useNavigate()
   const [loading, setLoading] = useState(false)
-  const setUser = useAuthStore((state) => state.setUser)
+  const setAuth = useAuthStore((state) => state.setAuth)
 
   const handleLogin = async (values: LoginFormValues) => {
     setLoading(true)
     try {
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email: values.email,
-        password: values.password,
-      })
+      const result = await login(values)
 
-      if (error) {
-        message.error('로그인에 실패했습니다: ' + error.message)
+      if (!result.success || !result.data) {
+        message.error(result.error || '로그인에 실패했습니다')
         return
       }
 
-      if (data.user) {
-        setUser(data.user)
-        message.success('로그인 성공!')
-        navigate('/dashboard')
+      // Supabase Auth 세션 설정
+      const { error: sessionError } = await supabase.auth.setSession({
+        access_token: result.data.session.access_token,
+        refresh_token: result.data.session.refresh_token,
+      })
+
+      if (sessionError) {
+        console.error('Session error:', sessionError)
+        message.error('세션 설정에 실패했습니다')
+        return
       }
+
+      setAuth(result.data.admin, result.data.session)
+      message.success(`${result.data.admin.name}님, 환영합니다!`)
+      navigate('/dashboard')
     } catch (err) {
       message.error('로그인 중 오류가 발생했습니다')
     } finally {
@@ -44,14 +52,21 @@ export function LoginPage() {
     <Card
       style={{
         width: 400,
-        boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
+        background: '#3d3d3d',
+        border: '1px solid #4a4a4a',
+        borderRadius: 12,
+        boxShadow: '0 8px 32px rgba(0, 0, 0, 0.4)',
       }}
     >
       <div style={{ textAlign: 'center', marginBottom: 32 }}>
-        <h1 style={{ fontSize: 28, fontWeight: 700, color: '#1890ff', margin: 0 }}>
-          담다 Admin
-        </h1>
-        <p style={{ color: '#888', marginTop: 8 }}>관리자 로그인</p>
+        <img
+          src="/logo-white.svg"
+          alt="담다"
+          style={{ height: 48, marginBottom: 12 }}
+        />
+        <p style={{ color: 'rgba(255,255,255,0.5)', margin: 0, fontSize: 14 }}>
+          관리자 로그인
+        </p>
       </div>
 
       <Form
@@ -62,13 +77,10 @@ export function LoginPage() {
         size="large"
       >
         <Form.Item
-          name="email"
-          rules={[
-            { required: true, message: '이메일을 입력해주세요' },
-            { type: 'email', message: '올바른 이메일 형식이 아닙니다' },
-          ]}
+          name="loginId"
+          rules={[{ required: true, message: '아이디를 입력해주세요' }]}
         >
-          <Input prefix={<UserOutlined />} placeholder="이메일" />
+          <Input prefix={<UserOutlined />} placeholder="아이디" />
         </Form.Item>
 
         <Form.Item

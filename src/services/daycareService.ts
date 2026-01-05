@@ -1,0 +1,192 @@
+import { supabase } from '@/lib/supabase'
+import type { Daycare, DaycareFilter, DaycareMemo, DaycareCreateInput, DaycareUpdateInput, PaginatedResponse } from '@/types'
+
+interface GetDaycaresParams {
+  page: number
+  pageSize: number
+  filter?: DaycareFilter
+}
+
+// 어린이집 목록 조회
+export async function getDaycares({
+  page,
+  pageSize,
+  filter,
+}: GetDaycaresParams): Promise<PaginatedResponse<Daycare>> {
+  const from = (page - 1) * pageSize
+  const to = page * pageSize - 1
+
+  let query = supabase
+    .from('daycares')
+    .select('*', { count: 'exact' })
+
+  // 상태 필터
+  if (filter?.status && filter.status !== 'all') {
+    query = query.eq('status', filter.status)
+  }
+
+  // 검색 필터 (이름, 이메일, 담당자)
+  if (filter?.search) {
+    query = query.or(
+      `name.ilike.%${filter.search}%,email.ilike.%${filter.search}%,contact_name.ilike.%${filter.search}%`
+    )
+  }
+
+  const { data, count, error } = await query
+    .order('created_at', { ascending: false })
+    .range(from, to)
+
+  if (error) {
+    throw new Error(error.message)
+  }
+
+  return {
+    data: data as Daycare[],
+    total: count || 0,
+    page,
+    pageSize,
+    totalPages: Math.ceil((count || 0) / pageSize),
+  }
+}
+
+// 어린이집 생성
+export async function createDaycare(input: DaycareCreateInput): Promise<Daycare> {
+  const { data, error } = await supabase
+    .from('daycares')
+    .insert({
+      id: crypto.randomUUID(),
+      email: input.email,
+      name: input.name,
+      representative: input.representative || null,
+      contact_name: input.contact_name,
+      contact_phone: input.contact_phone,
+      business_number: input.business_number || null,
+      license_number: input.license_number,
+      license_file: input.license_file || '',
+      address: input.address,
+      address_detail: input.address_detail || null,
+      zipcode: input.zipcode || null,
+      tel: input.tel || null,
+      capacity: input.capacity || null,
+      status: 'requested',
+    })
+    .select()
+    .single()
+
+  if (error) {
+    throw new Error(error.message)
+  }
+
+  return data as Daycare
+}
+
+// 어린이집 상세 조회
+export async function getDaycare(id: string): Promise<Daycare> {
+  const { data, error } = await supabase
+    .from('daycares')
+    .select('*')
+    .eq('id', id)
+    .single()
+
+  if (error) {
+    throw new Error(error.message)
+  }
+
+  return data as Daycare
+}
+
+// 어린이집 상태 변경
+export async function updateDaycareStatus(
+  id: string,
+  status: Daycare['status'],
+  rejectionReason?: string
+): Promise<void> {
+  const updateData: Record<string, unknown> = {
+    status,
+    updated_at: new Date().toISOString(),
+  }
+
+  if (status === 'approved') {
+    updateData.approved_at = new Date().toISOString()
+    updateData.rejection_reason = null
+  } else if (status === 'rejected') {
+    updateData.rejection_reason = rejectionReason || null
+    updateData.approved_at = null
+  }
+
+  const { error } = await supabase
+    .from('daycares')
+    .update(updateData)
+    .eq('id', id)
+
+  if (error) {
+    throw new Error(error.message)
+  }
+}
+
+// 어린이집 정보 수정
+export async function updateDaycare(
+  id: string,
+  input: DaycareUpdateInput
+): Promise<void> {
+  const { error } = await supabase
+    .from('daycares')
+    .update({
+      ...input,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', id)
+
+  if (error) {
+    throw new Error(error.message)
+  }
+}
+
+// 어린이집 메모 목록 조회
+export async function getDaycareMemos(daycareId: string): Promise<DaycareMemo[]> {
+  const { data, error } = await supabase
+    .from('daycare_memos')
+    .select(`
+      *,
+      admin:admins(name)
+    `)
+    .eq('daycare_id', daycareId)
+    .order('created_at', { ascending: false })
+
+  if (error) {
+    throw new Error(error.message)
+  }
+
+  return data as DaycareMemo[]
+}
+
+// 어린이집 메모 추가
+export async function addDaycareMemo(
+  daycareId: string,
+  adminId: string,
+  content: string
+): Promise<void> {
+  const { error } = await supabase
+    .from('daycare_memos')
+    .insert({
+      daycare_id: daycareId,
+      admin_id: adminId,
+      content,
+    })
+
+  if (error) {
+    throw new Error(error.message)
+  }
+}
+
+// 어린이집 메모 삭제
+export async function deleteDaycareMemo(memoId: string): Promise<void> {
+  const { error } = await supabase
+    .from('daycare_memos')
+    .delete()
+    .eq('id', memoId)
+
+  if (error) {
+    throw new Error(error.message)
+  }
+}
