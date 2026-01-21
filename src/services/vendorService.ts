@@ -236,3 +236,42 @@ export async function updateCommissionRate(
     throw new Error(updateError.message)
   }
 }
+
+// 전체 사업주 목록 조회 (엑셀 다운로드용)
+export async function getAllVendors(): Promise<BusinessOwner[]> {
+  const { data, error } = await supabase
+    .from('business_owners')
+    .select('*')
+    .order('created_at', { ascending: false })
+
+  if (error) {
+    throw new Error(error.message)
+  }
+
+  return (data as BusinessOwner[]) || []
+}
+
+// 사업주 대량 생성 (엑셀 업로드용)
+export async function createVendorsBulk(
+  inputs: BusinessOwnerCreateInput[]
+): Promise<{ success: number; failed: { row: number; error: string }[] }> {
+  const results = {
+    success: 0,
+    failed: [] as { row: number; error: string }[],
+  }
+
+  for (let i = 0; i < inputs.length; i++) {
+    const input = inputs[i]
+    try {
+      await createVendor(input)
+      results.success++
+    } catch (error) {
+      results.failed.push({
+        row: i + 2, // 엑셀에서 헤더가 1행이므로 데이터는 2행부터
+        error: error instanceof Error ? error.message : '알 수 없는 오류',
+      })
+    }
+  }
+
+  return results
+}

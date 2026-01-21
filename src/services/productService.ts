@@ -358,3 +358,46 @@ export async function getBusinessOwners(): Promise<Pick<BusinessOwner, 'id' | 'n
 
   return data || []
 }
+
+// 전체 상품 목록 조회 (엑셀 다운로드용)
+export async function getAllProducts(): Promise<Product[]> {
+  const { data, error } = await supabase
+    .from('products')
+    .select(`
+      *,
+      business_owner:business_owners(id, name),
+      category:categories(id, name)
+    `)
+    .order('created_at', { ascending: false })
+
+  if (error) {
+    throw new Error(error.message)
+  }
+
+  return (data as Product[]) || []
+}
+
+// 상품 대량 생성 (엑셀 업로드용)
+export async function createProductsBulk(
+  inputs: ProductCreateInput[]
+): Promise<{ success: number; failed: { row: number; error: string }[] }> {
+  const results = {
+    success: 0,
+    failed: [] as { row: number; error: string }[],
+  }
+
+  for (let i = 0; i < inputs.length; i++) {
+    const input = inputs[i]
+    try {
+      await createProduct(input)
+      results.success++
+    } catch (error) {
+      results.failed.push({
+        row: i + 2, // 엑셀에서 헤더가 1행이므로 데이터는 2행부터
+        error: error instanceof Error ? error.message : '알 수 없는 오류',
+      })
+    }
+  }
+
+  return results
+}
