@@ -72,6 +72,8 @@ export const PRODUCT_UPLOAD_COLUMNS = [
   { key: 'address', header: '주소', required: false },
   { key: 'region', header: '지역', required: false },
   { key: 'is_visible', header: '노출여부(Y/N)', required: false },
+  { key: 'options', header: '옵션(이름:가격:필수|...)', required: false },
+  { key: 'available_time_slots', header: '운영시간(요일:시작-종료|...)', required: false },
 ] as const
 
 // 엑셀 파일 다운로드
@@ -234,6 +236,92 @@ export function parseVendorExcelData(
   return { valid, errors }
 }
 
+// 옵션 문자열 파싱: "옵션명:가격:필수여부|옵션명:가격:필수여부"
+// 예: "추가인원:5000:N|특별케어:10000:Y"
+function parseOptionsString(
+  optionsStr: string
+): { options: { name: string; price: number; is_required: boolean; sort_order: number }[]; error?: string } {
+  if (!optionsStr || optionsStr.trim() === '') {
+    return { options: [] }
+  }
+
+  const options: { name: string; price: number; is_required: boolean; sort_order: number }[] = []
+  const parts = optionsStr.split('|')
+
+  for (let i = 0; i < parts.length; i++) {
+    const part = parts[i].trim()
+    if (!part) continue
+
+    const segments = part.split(':')
+    if (segments.length < 2) {
+      return { options: [], error: `옵션 형식 오류: "${part}" (형식: 이름:가격:필수여부)` }
+    }
+
+    const name = segments[0].trim()
+    const price = Number(segments[1])
+    const isRequired = segments[2]?.toUpperCase() === 'Y'
+
+    if (!name) {
+      return { options: [], error: `옵션명이 비어있습니다.` }
+    }
+    if (isNaN(price) || price < 0) {
+      return { options: [], error: `옵션 "${name}"의 가격이 올바르지 않습니다.` }
+    }
+
+    options.push({
+      name,
+      price,
+      is_required: isRequired,
+      sort_order: i,
+    })
+  }
+
+  return { options }
+}
+
+// 운영시간 문자열 파싱: "요일:시작-종료|요일:시작-종료"
+// 요일: 0=일, 1=월, 2=화, 3=수, 4=목, 5=금, 6=토
+// 예: "1:09:00-18:00|2:09:00-18:00|3:09:00-17:00"
+function parseTimeSlotsString(
+  slotsStr: string
+): { slots: { day: number; start: string; end: string }[]; error?: string } {
+  if (!slotsStr || slotsStr.trim() === '') {
+    return { slots: [] }
+  }
+
+  const slots: { day: number; start: string; end: string }[] = []
+  const parts = slotsStr.split('|')
+
+  const timeRegex = /^([01]?[0-9]|2[0-3]):[0-5][0-9]$/
+
+  for (const part of parts) {
+    const trimmed = part.trim()
+    if (!trimmed) continue
+
+    // 형식: "요일:시작시간-종료시간" 예: "1:09:00-18:00"
+    const match = trimmed.match(/^(\d):(\d{1,2}:\d{2})-(\d{1,2}:\d{2})$/)
+    if (!match) {
+      return { slots: [], error: `운영시간 형식 오류: "${trimmed}" (형식: 요일:HH:MM-HH:MM)` }
+    }
+
+    const day = Number(match[1])
+    const start = match[2].padStart(5, '0') // "9:00" -> "09:00"
+    const end = match[3].padStart(5, '0')
+
+    if (day < 0 || day > 6) {
+      return { slots: [], error: `요일은 0(일)~6(토) 사이여야 합니다: "${trimmed}"` }
+    }
+
+    if (!timeRegex.test(start) || !timeRegex.test(end)) {
+      return { slots: [], error: `시간 형식 오류: "${trimmed}" (HH:MM 형식 필요)` }
+    }
+
+    slots.push({ day, start, end })
+  }
+
+  return { slots }
+}
+
 // 엑셀 데이터를 상품 생성 입력으로 변환
 export function parseProductExcelData(
   data: Record<string, unknown>[]
@@ -323,6 +411,26 @@ export function parseProductExcelData(
       converted.is_visible = true
     }
 
+    // 옵션 파싱
+    if (converted.options) {
+      const { options, error } = parseOptionsString(String(converted.options))
+      if (error) {
+        errors.push({ row: rowNum, message: error })
+        return
+      }
+      converted.options = options.length > 0 ? options : undefined
+    }
+
+    // 운영시간 파싱
+    if (converted.available_time_slots) {
+      const { slots, error } = parseTimeSlotsString(String(converted.available_time_slots))
+      if (error) {
+        errors.push({ row: rowNum, message: error })
+        return
+      }
+      converted.available_time_slots = slots.length > 0 ? slots : undefined
+    }
+
     valid.push(converted)
   })
 
@@ -385,17 +493,47 @@ export function downloadProductTemplate() {
       '서울시 강남구',
       '서울',
       'Y',
+      '추가인원:5000:N|특별케어:10000:Y',
+      '1:09:00-18:00|2:09:00-18:00|3:09:00-18:00|4:09:00-18:00|5:09:00-18:00',
     ],
   ]
 
   const ws = XLSX.utils.aoa_to_sheet([headers, ...sampleData])
   const colWidths = headers.map((header) => ({
-    wch: Math.max(header.length * 2, 15),
+    wch: Math.max(header.length * 2, 20),
   }))
   ws['!cols'] = colWidths
 
   const wb = XLSX.utils.book_new()
   XLSX.utils.book_append_sheet(wb, ws, '상품등록양식')
+
+  // 안내 시트 추가
+  const guideData = [
+    ['상품 엑셀 업로드 안내'],
+    [''],
+    ['[필수 항목]'],
+    ['* 표시가 있는 항목은 반드시 입력해야 합니다.'],
+    [''],
+    ['[옵션 입력 형식]'],
+    ['형식: 옵션명:가격:필수여부|옵션명:가격:필수여부'],
+    ['- 옵션명: 옵션 이름'],
+    ['- 가격: 숫자 (0 이상)'],
+    ['- 필수여부: Y 또는 N (생략 시 N)'],
+    ['예시: 추가인원:5000:N|특별케어:10000:Y'],
+    [''],
+    ['[운영시간 입력 형식]'],
+    ['형식: 요일:시작시간-종료시간|요일:시작시간-종료시간'],
+    ['- 요일: 0=일, 1=월, 2=화, 3=수, 4=목, 5=금, 6=토'],
+    ['- 시간: HH:MM 형식 (24시간제)'],
+    ['예시: 1:09:00-18:00|2:09:00-18:00|3:09:00-17:00'],
+    ['(월~수 09:00~18:00, 17:00 운영)'],
+    [''],
+    ['[노출여부]'],
+    ['Y 또는 N으로 입력 (생략 시 Y)'],
+  ]
+  const guideWs = XLSX.utils.aoa_to_sheet(guideData)
+  guideWs['!cols'] = [{ wch: 60 }]
+  XLSX.utils.book_append_sheet(wb, guideWs, '입력안내')
 
   XLSX.writeFile(wb, '상품_등록_양식.xlsx')
 }
