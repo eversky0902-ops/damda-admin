@@ -25,6 +25,7 @@ export function CategoryEditPage() {
         sort_order: values.sort_order,
         is_active: values.is_active,
         icon_url: values.icon_url,
+        banner_url: values.banner_url,
       }),
     onSuccess: async () => {
       message.success('카테고리가 수정되었습니다.')

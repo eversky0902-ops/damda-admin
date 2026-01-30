@@ -192,6 +192,7 @@ export async function createCategory(input: CategoryCreateInput): Promise<Catego
       sort_order: 0, // 새 카테고리는 항상 0
       is_active: input.is_active ?? true,
       icon_url: input.icon_url || null,
+      banner_url: input.banner_url || null,
     })
     .select()
     .single()

@@ -37,6 +37,7 @@ export interface CategoryFormValues {
   sort_order: number
   is_active: boolean
   icon_url: string | null
+  banner_url: string | null
 }
 
 // 섹션 헤더 컴포넌트
@@ -81,7 +82,9 @@ export function CategoryForm({
   const [form] = Form.useForm<CategoryFormValues>()
   const parentId = Form.useWatch('parent_id', form)
   const [iconUrl, setIconUrl] = useState<string | null>(null)
+  const [bannerUrl, setBannerUrl] = useState<string | null>(null)
   const [uploading, setUploading] = useState(false)
+  const [bannerUploading, setBannerUploading] = useState(false)
 
   // 모든 카테고리 조회
   const { data: categories } = useQuery({
@@ -114,8 +117,10 @@ export function CategoryForm({
         sort_order: initialValues.sort_order ?? 0,
         is_active: initialValues.is_active ?? true,
         icon_url: initialValues.icon_url || null,
+        banner_url: initialValues.banner_url || null,
       })
       setIconUrl(initialValues.icon_url || null)
+      setBannerUrl(initialValues.banner_url || null)
     }
   }, [initialValues, form])
 
@@ -155,6 +160,42 @@ export function CategoryForm({
     form.setFieldValue('icon_url', null)
   }
 
+  // 배너 업로드 핸들러
+  const handleBannerUpload = async (file: File) => {
+    setBannerUploading(true)
+    try {
+      const fileExt = file.name.split('.').pop()
+      const fileName = `category-banners/${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`
+
+      const { error: uploadError } = await supabase.storage
+        .from('public')
+        .upload(fileName, file, {
+          cacheControl: '3600',
+          upsert: false,
+        })
+
+      if (uploadError) {
+        throw uploadError
+      }
+
+      const url = `${SUPABASE_URL}/storage/v1/object/public/public/${fileName}`
+      setBannerUrl(url)
+      form.setFieldValue('banner_url', url)
+      message.success('배너 이미지가 업로드되었습니다.')
+    } catch (error) {
+      console.error('Upload error:', error)
+      message.error('배너 이미지 업로드에 실패했습니다.')
+    } finally {
+      setBannerUploading(false)
+    }
+  }
+
+  // 배너 삭제 핸들러
+  const handleBannerRemove = () => {
+    setBannerUrl(null)
+    form.setFieldValue('banner_url', null)
+  }
+
   const handleSubmit = () => {
     form.validateFields().then((values) => {
       onSubmit(values)
@@ -175,6 +216,7 @@ export function CategoryForm({
         sort_order: 0,
         is_active: true,
         icon_url: null,
+        banner_url: null,
       }}
     >
       <Card style={{ marginBottom: 24 }}>
@@ -194,60 +236,115 @@ export function CategoryForm({
         </Form.Item>
 
         {currentDepth === 1 && (
-          <Form.Item
-            name="icon_url"
-            label="카테고리 아이콘"
-            extra="대분류 카테고리의 아이콘입니다. SVG, PNG, JPG 파일을 업로드하세요."
-          >
-            <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-              {iconUrl && (
-                <div style={{
-                  width: 64,
-                  height: 64,
-                  border: '1px solid #d9d9d9',
-                  borderRadius: 8,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  background: '#fafafa',
-                  position: 'relative',
-                }}>
-                  <img
-                    src={resolveIconUrl(iconUrl)!}
-                    alt="카테고리 아이콘"
-                    style={{ maxWidth: 48, maxHeight: 48, objectFit: 'contain' }}
-                  />
-                  <Button
-                    type="text"
-                    danger
-                    size="small"
-                    icon={<DeleteOutlined />}
-                    onClick={handleIconRemove}
-                    style={{
-                      position: 'absolute',
-                      top: -8,
-                      right: -8,
-                      background: '#fff',
-                      borderRadius: '50%',
-                      boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
-                    }}
-                  />
-                </div>
-              )}
-              <Upload
-                accept=".svg,.png,.jpg,.jpeg"
-                showUploadList={false}
-                beforeUpload={(file) => {
-                  handleIconUpload(file)
-                  return false
-                }}
-              >
-                <Button icon={<UploadOutlined />} loading={uploading}>
-                  {iconUrl ? '아이콘 변경' : '아이콘 업로드'}
-                </Button>
-              </Upload>
-            </div>
-          </Form.Item>
+          <>
+            <Form.Item
+              name="icon_url"
+              label="카테고리 아이콘"
+              extra="대분류 카테고리의 아이콘입니다. SVG, PNG, JPG 파일을 업로드하세요."
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+                {iconUrl && (
+                  <div style={{
+                    width: 64,
+                    height: 64,
+                    border: '1px solid #d9d9d9',
+                    borderRadius: 8,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    background: '#fafafa',
+                    position: 'relative',
+                  }}>
+                    <img
+                      src={resolveIconUrl(iconUrl)!}
+                      alt="카테고리 아이콘"
+                      style={{ maxWidth: 48, maxHeight: 48, objectFit: 'contain' }}
+                    />
+                    <Button
+                      type="text"
+                      danger
+                      size="small"
+                      icon={<DeleteOutlined />}
+                      onClick={handleIconRemove}
+                      style={{
+                        position: 'absolute',
+                        top: -8,
+                        right: -8,
+                        background: '#fff',
+                        borderRadius: '50%',
+                        boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+                      }}
+                    />
+                  </div>
+                )}
+                <Upload
+                  accept=".svg,.png,.jpg,.jpeg"
+                  showUploadList={false}
+                  beforeUpload={(file) => {
+                    handleIconUpload(file)
+                    return false
+                  }}
+                >
+                  <Button icon={<UploadOutlined />} loading={uploading}>
+                    {iconUrl ? '아이콘 변경' : '아이콘 업로드'}
+                  </Button>
+                </Upload>
+              </div>
+            </Form.Item>
+
+            <Form.Item
+              name="banner_url"
+              label="카테고리 상단 배너"
+              extra="카테고리 페이지 상단에 표시되는 배너 이미지입니다. PNG, JPG 파일을 업로드하세요."
+            >
+              <div style={{ display: 'flex', alignItems: 'flex-start', gap: 16 }}>
+                {bannerUrl && (
+                  <div style={{
+                    width: 200,
+                    height: 80,
+                    border: '1px solid #d9d9d9',
+                    borderRadius: 8,
+                    overflow: 'hidden',
+                    background: '#fafafa',
+                    position: 'relative',
+                  }}>
+                    <img
+                      src={bannerUrl}
+                      alt="카테고리 배너"
+                      style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                    />
+                    <Button
+                      type="text"
+                      danger
+                      size="small"
+                      icon={<DeleteOutlined />}
+                      onClick={handleBannerRemove}
+                      style={{
+                        position: 'absolute',
+                        top: 4,
+                        right: 4,
+                        background: '#fff',
+                        borderRadius: '50%',
+                        boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+                      }}
+                    />
+                  </div>
+                )}
+                <Upload
+                  accept=".png,.jpg,.jpeg,.webp"
+                  showUploadList={false}
+                  beforeUpload={(file) => {
+                    handleBannerUpload(file)
+                    return false
+                  }}
+                >
+                  <Button icon={<UploadOutlined />} loading={bannerUploading}>
+                    {bannerUrl ? '배너 변경' : '배너 업로드'}
+                  </Button>
+                </Upload>
+              </div>
+            </Form.Item>
+          </>
         )}
 
         <Form.Item
