@@ -16,6 +16,8 @@ import {
   Space,
   TimePicker,
   Checkbox,
+  Radio,
+  Tag,
   message,
 } from 'antd'
 import {
@@ -36,8 +38,8 @@ import dayjs from 'dayjs'
 
 import { getBusinessOwners, getCategoriesFlat } from '@/services/productService'
 import { uploadProductImage } from '@/services/storageService'
-import { REGION_OPTIONS, DAY_OF_WEEK_LABEL } from '@/constants'
-import type { Product, TimeSlot } from '@/types'
+import { REGION_OPTIONS, DAY_OF_WEEK_LABEL, TIME_SLOT_INTERVAL_OPTIONS } from '@/constants'
+import type { Product, TimeSlot, TimeSlotMode, TimeSlotInterval } from '@/types'
 
 const { Text } = Typography
 const { TextArea } = Input
@@ -87,6 +89,9 @@ interface TimeSlotItem {
   enabled: boolean
   start: string
   end: string
+  mode: TimeSlotMode
+  interval: TimeSlotInterval
+  customSlots: string[]
 }
 
 export function ProductForm({
@@ -128,6 +133,9 @@ export function ProductForm({
       enabled: false,
       start: '09:00',
       end: '18:00',
+      mode: 'auto' as TimeSlotMode,
+      interval: 60 as TimeSlotInterval,
+      customSlots: [],
     }))
 
     if (initialValues?.available_time_slots) {
@@ -139,6 +147,9 @@ export function ProductForm({
             enabled: true,
             start: slot.start,
             end: slot.end,
+            mode: slot.mode || 'auto',
+            interval: slot.interval || 60,
+            customSlots: slot.customSlots || [],
           }
         }
       })
@@ -228,6 +239,47 @@ export function ProductForm({
     )
   }
 
+  // 자동 시간 슬롯 생성
+  const generateTimeSlots = (start: string, end: string, interval: number): string[] => {
+    const slots: string[] = []
+    const [startHour, startMin] = start.split(':').map(Number)
+    const [endHour, endMin] = end.split(':').map(Number)
+
+    let currentMinutes = startHour * 60 + startMin
+    const endMinutes = endHour * 60 + endMin
+
+    while (currentMinutes < endMinutes) {
+      const hour = Math.floor(currentMinutes / 60)
+      const min = currentMinutes % 60
+      slots.push(`${hour.toString().padStart(2, '0')}:${min.toString().padStart(2, '0')}`)
+      currentMinutes += interval
+    }
+
+    return slots
+  }
+
+  // 커스텀 슬롯 추가
+  const addCustomSlot = (day: number, time: string) => {
+    setTimeSlots((slots) =>
+      slots.map((slot) =>
+        slot.day === day && !slot.customSlots.includes(time)
+          ? { ...slot, customSlots: [...slot.customSlots, time].sort() }
+          : slot
+      )
+    )
+  }
+
+  // 커스텀 슬롯 제거
+  const removeCustomSlot = (day: number, time: string) => {
+    setTimeSlots((slots) =>
+      slots.map((slot) =>
+        slot.day === day
+          ? { ...slot, customSlots: slot.customSlots.filter((t) => t !== time) }
+          : slot
+      )
+    )
+  }
+
   const handleSubmit = async () => {
     try {
       const values = await form.validateFields()
@@ -245,6 +297,9 @@ export function ProductForm({
           day: slot.day,
           start: slot.start,
           end: slot.end,
+          mode: slot.mode,
+          interval: slot.mode === 'auto' ? slot.interval : undefined,
+          customSlots: slot.mode === 'custom' ? slot.customSlots : undefined,
         }))
 
       // 옵션 변환
@@ -460,6 +515,10 @@ export function ProductForm({
               </Form.Item>
             </Col>
           </Row>
+
+          <Form.Item name="address_detail" label="상세주소" extra="건물명, 층수, 호수 등을 입력하세요">
+            <Input placeholder="예: 3층 301호" style={{ width: 400 }} />
+          </Form.Item>
         </Card>
 
         {/* 이미지 */}
@@ -606,40 +665,236 @@ export function ProductForm({
             description="요일별 운영 시간을 설정해주세요"
           />
 
-          {timeSlots.map((slot) => (
-            <Row key={slot.day} gutter={16} align="middle" style={{ marginBottom: 12 }}>
-              <Col style={{ width: 80 }}>
-                <Checkbox
-                  checked={slot.enabled}
-                  onChange={(e) => updateTimeSlot(slot.day, 'enabled', e.target.checked)}
+          {/* 벌크 수정 영역 */}
+          <div style={{ marginBottom: 16, padding: 12, background: '#fafafa', borderRadius: 6 }}>
+            <Row gutter={16} align="middle" style={{ marginBottom: 8 }}>
+              <Col>
+                <Button
+                  size="small"
+                  onClick={() => {
+                    const allEnabled = timeSlots.every((s) => s.enabled)
+                    setTimeSlots(timeSlots.map((s) => ({ ...s, enabled: !allEnabled })))
+                  }}
                 >
-                  {DAY_OF_WEEK_LABEL[slot.day]}
-                </Checkbox>
+                  {timeSlots.every((s) => s.enabled) ? '전체 해제' : '전체 선택'}
+                </Button>
               </Col>
               <Col>
-                <TimePicker
-                  value={dayjs(slot.start, 'HH:mm')}
-                  format="HH:mm"
-                  minuteStep={30}
-                  disabled={!slot.enabled}
-                  onChange={(time) =>
-                    updateTimeSlot(slot.day, 'start', time?.format('HH:mm') || '09:00')
-                  }
-                />
+                <Space size="small">
+                  <Text type="secondary" style={{ fontSize: 13 }}>일괄 시간:</Text>
+                  <TimePicker
+                    size="small"
+                    format="HH:mm"
+                    minuteStep={30}
+                    defaultValue={dayjs('09:00', 'HH:mm')}
+                    onChange={(time) => {
+                      if (time) {
+                        setTimeSlots(timeSlots.map((s) => ({ ...s, start: time.format('HH:mm') })))
+                      }
+                    }}
+                    placeholder="시작"
+                    style={{ width: 90 }}
+                  />
+                  <span>~</span>
+                  <TimePicker
+                    size="small"
+                    format="HH:mm"
+                    minuteStep={30}
+                    defaultValue={dayjs('18:00', 'HH:mm')}
+                    onChange={(time) => {
+                      if (time) {
+                        setTimeSlots(timeSlots.map((s) => ({ ...s, end: time.format('HH:mm') })))
+                      }
+                    }}
+                    placeholder="종료"
+                    style={{ width: 90 }}
+                  />
+                </Space>
               </Col>
-              <Col>~</Col>
               <Col>
-                <TimePicker
-                  value={dayjs(slot.end, 'HH:mm')}
-                  format="HH:mm"
-                  minuteStep={30}
-                  disabled={!slot.enabled}
-                  onChange={(time) =>
-                    updateTimeSlot(slot.day, 'end', time?.format('HH:mm') || '18:00')
-                  }
-                />
+                <Button
+                  size="small"
+                  onClick={() => {
+                    // 평일(월~금)만 선택
+                    setTimeSlots(timeSlots.map((s) => ({
+                      ...s,
+                      enabled: s.day >= 1 && s.day <= 5,
+                    })))
+                  }}
+                >
+                  평일만
+                </Button>
+              </Col>
+              <Col>
+                <Button
+                  size="small"
+                  onClick={() => {
+                    // 주말(토,일)만 선택
+                    setTimeSlots(timeSlots.map((s) => ({
+                      ...s,
+                      enabled: s.day === 0 || s.day === 6,
+                    })))
+                  }}
+                >
+                  주말만
+                </Button>
               </Col>
             </Row>
+            <Row gutter={16} align="middle">
+              <Col>
+                <Space size="small">
+                  <Text type="secondary" style={{ fontSize: 13 }}>일괄 슬롯:</Text>
+                  <Select
+                    size="small"
+                    style={{ width: 100 }}
+                    placeholder="모드"
+                    onChange={(mode: TimeSlotMode) => {
+                      setTimeSlots(timeSlots.map((s) => ({ ...s, mode })))
+                    }}
+                    options={[
+                      { value: 'auto', label: '자동 생성' },
+                      { value: 'custom', label: '직접 지정' },
+                    ]}
+                  />
+                  <Select
+                    size="small"
+                    style={{ width: 80 }}
+                    placeholder="간격"
+                    onChange={(interval: TimeSlotInterval) => {
+                      setTimeSlots(timeSlots.map((s) => ({ ...s, interval })))
+                    }}
+                    options={TIME_SLOT_INTERVAL_OPTIONS}
+                  />
+                </Space>
+              </Col>
+            </Row>
+          </div>
+
+          {timeSlots.map((slot) => (
+            <div
+              key={slot.day}
+              style={{
+                marginBottom: 16,
+                padding: 12,
+                border: slot.enabled ? '1px solid #d9d9d9' : '1px dashed #d9d9d9',
+                borderRadius: 6,
+                background: slot.enabled ? '#fff' : '#fafafa',
+              }}
+            >
+              <Row gutter={16} align="middle">
+                <Col style={{ width: 80 }}>
+                  <Checkbox
+                    checked={slot.enabled}
+                    onChange={(e) => updateTimeSlot(slot.day, 'enabled', e.target.checked)}
+                  >
+                    <Text strong={slot.enabled}>{DAY_OF_WEEK_LABEL[slot.day]}</Text>
+                  </Checkbox>
+                </Col>
+                <Col>
+                  <TimePicker
+                    value={dayjs(slot.start, 'HH:mm')}
+                    format="HH:mm"
+                    minuteStep={30}
+                    disabled={!slot.enabled}
+                    onChange={(time) =>
+                      updateTimeSlot(slot.day, 'start', time?.format('HH:mm') || '09:00')
+                    }
+                    size="small"
+                  />
+                </Col>
+                <Col>~</Col>
+                <Col>
+                  <TimePicker
+                    value={dayjs(slot.end, 'HH:mm')}
+                    format="HH:mm"
+                    minuteStep={30}
+                    disabled={!slot.enabled}
+                    onChange={(time) =>
+                      updateTimeSlot(slot.day, 'end', time?.format('HH:mm') || '18:00')
+                    }
+                    size="small"
+                  />
+                </Col>
+              </Row>
+
+              {slot.enabled && (
+                <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px dashed #e8e8e8' }}>
+                  <Row gutter={16} align="middle">
+                    <Col>
+                      <Text type="secondary" style={{ fontSize: 13 }}>예약 시간:</Text>
+                    </Col>
+                    <Col>
+                      <Radio.Group
+                        value={slot.mode}
+                        onChange={(e) => updateTimeSlot(slot.day, 'mode', e.target.value)}
+                        size="small"
+                      >
+                        <Radio value="auto">자동 생성</Radio>
+                        <Radio value="custom">직접 지정</Radio>
+                      </Radio.Group>
+                    </Col>
+                  </Row>
+
+                  {slot.mode === 'auto' && (
+                    <Row gutter={16} align="middle" style={{ marginTop: 8 }}>
+                      <Col>
+                        <Space size="small">
+                          <Text type="secondary" style={{ fontSize: 13 }}>간격:</Text>
+                          <Select
+                            value={slot.interval}
+                            onChange={(value) => updateTimeSlot(slot.day, 'interval', value)}
+                            size="small"
+                            style={{ width: 80 }}
+                            options={TIME_SLOT_INTERVAL_OPTIONS}
+                          />
+                        </Space>
+                      </Col>
+                      <Col>
+                        <Text type="secondary" style={{ fontSize: 12 }}>
+                          미리보기: {generateTimeSlots(slot.start, slot.end, slot.interval).slice(0, 6).join(', ')}
+                          {generateTimeSlots(slot.start, slot.end, slot.interval).length > 6 && ' ...'}
+                        </Text>
+                      </Col>
+                    </Row>
+                  )}
+
+                  {slot.mode === 'custom' && (
+                    <div style={{ marginTop: 8 }}>
+                      <Space wrap size={[4, 4]}>
+                        {slot.customSlots.map((time) => (
+                          <Tag
+                            key={time}
+                            closable
+                            onClose={() => removeCustomSlot(slot.day, time)}
+                            style={{ margin: 0 }}
+                          >
+                            {time}
+                          </Tag>
+                        ))}
+                        <TimePicker
+                          format="HH:mm"
+                          minuteStep={30}
+                          placeholder="시간 추가"
+                          size="small"
+                          style={{ width: 100 }}
+                          onChange={(time) => {
+                            if (time) {
+                              addCustomSlot(slot.day, time.format('HH:mm'))
+                            }
+                          }}
+                          value={null}
+                        />
+                      </Space>
+                      {slot.customSlots.length === 0 && (
+                        <Text type="secondary" style={{ fontSize: 12, display: 'block', marginTop: 4 }}>
+                          예약 가능한 시간을 추가해주세요
+                        </Text>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
           ))}
         </Card>
 

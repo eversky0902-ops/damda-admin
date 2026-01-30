@@ -298,11 +298,20 @@ export interface Product {
   images?: ProductImage[]
 }
 
+// 시간 슬롯 모드 타입
+export type TimeSlotMode = 'auto' | 'custom'
+
+// 시간 슬롯 간격 타입
+export type TimeSlotInterval = 30 | 60 | 90 | 120
+
 // 시간대 타입
 export interface TimeSlot {
   day: number // 0=일, 1=월, ..., 6=토
   start: string // "09:00"
   end: string // "18:00"
+  mode?: TimeSlotMode // 'auto' | 'custom'
+  interval?: TimeSlotInterval // 30 | 60 | 90 | 120 (auto 모드)
+  customSlots?: string[] // ["10:00", "14:00"] (custom 모드)
 }
 
 // 상품 옵션 타입
