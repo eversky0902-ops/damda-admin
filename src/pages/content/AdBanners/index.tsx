@@ -6,11 +6,11 @@ import { PlusOutlined, DeleteOutlined } from '@ant-design/icons'
 import type { ColumnsType, TablePaginationConfig } from 'antd/es/table'
 import dayjs from 'dayjs'
 
-import { getBanners, toggleBannerVisibility, deleteBanner } from '@/services/bannerService'
-import { NOTICE_VISIBILITY_LABEL, NOTICE_VISIBILITY_COLOR, DEFAULT_PAGE_SIZE, DATETIME_FORMAT } from '@/constants'
-import type { Banner } from '@/types'
+import { getAdBanners, toggleAdBannerVisibility, deleteAdBanner } from '@/services/adBannerService'
+import { AD_BANNER_STATUS_LABEL, AD_BANNER_STATUS_COLOR, DEFAULT_PAGE_SIZE, DATE_FORMAT } from '@/constants'
+import type { AdBanner } from '@/types'
 
-export function BannersPage() {
+export function AdBannersPage() {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const [page, setPage] = useState(1)
@@ -18,9 +18,9 @@ export function BannersPage() {
   const [statusFilter, setStatusFilter] = useState<'all' | 'visible' | 'hidden'>('all')
 
   const { data, isLoading } = useQuery({
-    queryKey: ['banners', page, pageSize, statusFilter],
+    queryKey: ['adBanners', page, pageSize, statusFilter],
     queryFn: () =>
-      getBanners({
+      getAdBanners({
         page,
         pageSize,
         status: statusFilter,
@@ -29,9 +29,9 @@ export function BannersPage() {
 
   const visibilityMutation = useMutation({
     mutationFn: ({ id, isVisible }: { id: string; isVisible: boolean }) =>
-      toggleBannerVisibility(id, isVisible),
+      toggleAdBannerVisibility(id, isVisible),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['banners'] })
+      queryClient.invalidateQueries({ queryKey: ['adBanners'] })
       message.success('공개 상태가 변경되었습니다')
     },
     onError: () => {
@@ -40,10 +40,10 @@ export function BannersPage() {
   })
 
   const deleteMutation = useMutation({
-    mutationFn: deleteBanner,
+    mutationFn: deleteAdBanner,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['banners'] })
-      message.success('이미지가 삭제되었습니다')
+      queryClient.invalidateQueries({ queryKey: ['adBanners'] })
+      message.success('광고 배너가 삭제되었습니다')
     },
     onError: () => {
       message.error('삭제에 실패했습니다')
@@ -55,7 +55,7 @@ export function BannersPage() {
     setPageSize(pagination.pageSize || DEFAULT_PAGE_SIZE)
   }
 
-  const columns: ColumnsType<Banner> = [
+  const columns: ColumnsType<AdBanner> = [
     {
       title: '순서',
       dataIndex: 'sort_order',
@@ -67,12 +67,12 @@ export function BannersPage() {
       title: '이미지',
       dataIndex: 'image_url',
       key: 'image_url',
-      width: 200,
+      width: 150,
       render: (url: string) => (
         <Image
           src={url}
-          width={180}
-          height={90}
+          width={120}
+          height={40}
           style={{ objectFit: 'cover', borderRadius: 4 }}
           preview={{ mask: '미리보기' }}
           onClick={(e) => e.stopPropagation()}
@@ -80,14 +80,43 @@ export function BannersPage() {
       ),
     },
     {
+      title: '광고주',
+      dataIndex: 'advertiser_name',
+      key: 'advertiser_name',
+      width: 120,
+    },
+    {
       title: '제목',
       dataIndex: 'title',
       key: 'title',
-      render: (title: string | null, record) => (
-        <a onClick={(e) => { e.stopPropagation(); navigate(`/content/banners/${record.id}`); }}>
-          {title || '(제목 없음)'}
+      render: (title: string, record) => (
+        <a onClick={(e) => { e.stopPropagation(); navigate(`/content/ad-banners/${record.id}`); }}>
+          {title}
         </a>
       ),
+    },
+    {
+      title: '링크',
+      dataIndex: 'link_url',
+      key: 'link_url',
+      width: 200,
+      ellipsis: true,
+      render: (url: string) => (
+        <a href={url} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()}>
+          {url}
+        </a>
+      ),
+    },
+    {
+      title: '노출기간',
+      key: 'period',
+      width: 180,
+      render: (_, record) => {
+        if (!record.start_date && !record.end_date) return '상시'
+        const start = record.start_date ? dayjs(record.start_date).format(DATE_FORMAT) : '-'
+        const end = record.end_date ? dayjs(record.end_date).format(DATE_FORMAT) : '-'
+        return `${start} ~ ${end}`
+      },
     },
     {
       title: '상태',
@@ -95,17 +124,10 @@ export function BannersPage() {
       key: 'is_visible',
       width: 80,
       render: (isVisible: boolean) => (
-        <Tag color={NOTICE_VISIBILITY_COLOR[isVisible ? 'visible' : 'hidden']}>
-          {NOTICE_VISIBILITY_LABEL[isVisible ? 'visible' : 'hidden']}
+        <Tag color={AD_BANNER_STATUS_COLOR[isVisible ? 'visible' : 'hidden']}>
+          {AD_BANNER_STATUS_LABEL[isVisible ? 'visible' : 'hidden']}
         </Tag>
       ),
-    },
-    {
-      title: '등록일',
-      dataIndex: 'created_at',
-      key: 'created_at',
-      width: 160,
-      render: (date: string) => dayjs(date).format(DATETIME_FORMAT),
     },
     {
       title: '공개',
@@ -127,7 +149,7 @@ export function BannersPage() {
       width: 50,
       render: (_, record) => (
         <Popconfirm
-          title="이미지 삭제"
+          title="광고 배너 삭제"
           description="정말 삭제하시겠습니까?"
           onConfirm={(e) => {
             e?.stopPropagation()
@@ -152,13 +174,13 @@ export function BannersPage() {
   return (
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 16 }}>
-        <h2 style={{ margin: 0 }}>메인 이미지 관리</h2>
+        <h2 style={{ margin: 0 }}>광고 배너 관리</h2>
         <Button
           type="primary"
           icon={<PlusOutlined />}
-          onClick={() => navigate('/content/banners/new')}
+          onClick={() => navigate('/content/ad-banners/new')}
         >
-          이미지 등록
+          광고 배너 등록
         </Button>
       </div>
 
@@ -202,7 +224,7 @@ export function BannersPage() {
         }}
         onChange={handleTableChange}
         onRow={(record) => ({
-          onClick: () => navigate(`/content/banners/${record.id}`),
+          onClick: () => navigate(`/content/ad-banners/${record.id}`),
           style: { cursor: 'pointer' },
         })}
       />

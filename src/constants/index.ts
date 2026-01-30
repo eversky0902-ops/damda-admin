@@ -103,6 +103,20 @@ export const DAY_OF_WEEK_LABEL: Record<number, string> = {
   6: '토',
 }
 
+// 시간 슬롯 모드 라벨
+export const TIME_SLOT_MODE_LABEL: Record<string, string> = {
+  auto: '자동 생성',
+  custom: '직접 지정',
+}
+
+// 시간 슬롯 간격 옵션
+export const TIME_SLOT_INTERVAL_OPTIONS = [
+  { value: 30, label: '30분' },
+  { value: 60, label: '60분' },
+  { value: 90, label: '90분' },
+  { value: 120, label: '2시간' },
+]
+
 // 카테고리 상태 라벨
 export const CATEGORY_STATUS_LABEL: Record<string, string> = {
   active: '활성',
@@ -195,17 +209,6 @@ export const FAQ_CATEGORY_LABEL: Record<string, string> = {
   etc: '기타',
 }
 
-// 배너 타입 라벨
-export const BANNER_TYPE_LABEL: Record<string, string> = {
-  main: '메인 배너',
-  sub: '서브 배너',
-}
-
-export const BANNER_TYPE_COLOR: Record<string, string> = {
-  main: 'blue',
-  sub: 'green',
-}
-
 // 팝업 위치 라벨
 export const POPUP_POSITION_LABEL: Record<string, string> = {
   center: '중앙',
@@ -261,6 +264,17 @@ export const PG_PROVIDER_LABEL: Record<string, string> = {
   nicepay: '나이스페이',
   inicis: '이니시스',
   kcp: 'KCP',
+}
+
+// 광고 배너 상태 라벨
+export const AD_BANNER_STATUS_LABEL: Record<string, string> = {
+  visible: '공개',
+  hidden: '비공개',
+}
+
+export const AD_BANNER_STATUS_COLOR: Record<string, string> = {
+  visible: 'green',
+  hidden: 'default',
 }
 
 // 법적 문서 카테고리 옵션

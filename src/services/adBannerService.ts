@@ -1,22 +1,22 @@
 import { supabase } from '@/lib/supabase'
 import type {
-  Banner,
-  BannerCreateInput,
-  BannerUpdateInput,
-  BannerFilter,
+  AdBanner,
+  AdBannerCreateInput,
+  AdBannerUpdateInput,
+  AdBannerFilter,
   PaginationParams,
 } from '@/types'
 
-// 배너 목록 조회
-export async function getBanners(
-  params: PaginationParams & BannerFilter
-): Promise<{ data: Banner[]; total: number }> {
+// 광고 배너 목록 조회
+export async function getAdBanners(
+  params: PaginationParams & AdBannerFilter
+): Promise<{ data: AdBanner[]; total: number }> {
   const { page, pageSize, status } = params
   const from = (page - 1) * pageSize
   const to = from + pageSize - 1
 
   let query = supabase
-    .from('banners')
+    .from('ad_banners')
     .select('*', { count: 'exact' })
 
   // 공개 상태 필터
@@ -37,15 +37,15 @@ export async function getBanners(
   }
 
   return {
-    data: (data as Banner[]) || [],
+    data: (data as AdBanner[]) || [],
     total: count || 0,
   }
 }
 
-// 배너 상세 조회
-export async function getBanner(id: string): Promise<Banner> {
+// 광고 배너 상세 조회
+export async function getAdBanner(id: string): Promise<AdBanner> {
   const { data, error } = await supabase
-    .from('banners')
+    .from('ad_banners')
     .select('*')
     .eq('id', id)
     .single()
@@ -54,18 +54,21 @@ export async function getBanner(id: string): Promise<Banner> {
     throw new Error(error.message)
   }
 
-  return data as Banner
+  return data as AdBanner
 }
 
-// 배너 생성
-export async function createBanner(input: BannerCreateInput): Promise<Banner> {
+// 광고 배너 생성
+export async function createAdBanner(input: AdBannerCreateInput): Promise<AdBanner> {
   const { data, error } = await supabase
-    .from('banners')
+    .from('ad_banners')
     .insert({
-      type: 'main', // 기본값으로 main 설정
-      title: input.title || null,
+      title: input.title,
+      advertiser_name: input.advertiser_name,
       image_url: input.image_url,
+      link_url: input.link_url,
       sort_order: input.sort_order ?? 0,
+      start_date: input.start_date || null,
+      end_date: input.end_date || null,
       is_visible: input.is_visible ?? true,
     })
     .select()
@@ -75,16 +78,16 @@ export async function createBanner(input: BannerCreateInput): Promise<Banner> {
     throw new Error(error.message)
   }
 
-  return data as Banner
+  return data as AdBanner
 }
 
-// 배너 수정
-export async function updateBanner(
+// 광고 배너 수정
+export async function updateAdBanner(
   id: string,
-  input: BannerUpdateInput
-): Promise<Banner> {
+  input: AdBannerUpdateInput
+): Promise<AdBanner> {
   const { data, error } = await supabase
-    .from('banners')
+    .from('ad_banners')
     .update({
       ...input,
       updated_at: new Date().toISOString(),
@@ -97,13 +100,13 @@ export async function updateBanner(
     throw new Error(error.message)
   }
 
-  return data as Banner
+  return data as AdBanner
 }
 
-// 배너 삭제
-export async function deleteBanner(id: string): Promise<void> {
+// 광고 배너 삭제
+export async function deleteAdBanner(id: string): Promise<void> {
   const { error } = await supabase
-    .from('banners')
+    .from('ad_banners')
     .delete()
     .eq('id', id)
 
@@ -112,18 +115,18 @@ export async function deleteBanner(id: string): Promise<void> {
   }
 }
 
-// 배너 공개/비공개 토글
-export async function toggleBannerVisibility(
+// 광고 배너 공개/비공개 토글
+export async function toggleAdBannerVisibility(
   id: string,
   isVisible: boolean
-): Promise<Banner> {
-  return updateBanner(id, { is_visible: isVisible })
+): Promise<AdBanner> {
+  return updateAdBanner(id, { is_visible: isVisible })
 }
 
-// 배너 순서 변경
-export async function updateBannerSortOrder(
+// 광고 배너 순서 변경
+export async function updateAdBannerSortOrder(
   id: string,
   sortOrder: number
-): Promise<Banner> {
-  return updateBanner(id, { sort_order: sortOrder })
+): Promise<AdBanner> {
+  return updateAdBanner(id, { sort_order: sortOrder })
 }

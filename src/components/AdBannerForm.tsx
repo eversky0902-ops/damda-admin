@@ -1,15 +1,17 @@
 import { useState } from 'react'
-import { Form, Input, Switch, Button, Card, InputNumber, Upload, Typography, Image } from 'antd'
-import { ArrowLeftOutlined, PictureOutlined, SettingOutlined, UploadOutlined } from '@ant-design/icons'
+import { Form, Input, Switch, Button, Card, InputNumber, DatePicker, Upload, Typography, Image } from 'antd'
+import { ArrowLeftOutlined, PictureOutlined, SettingOutlined, UploadOutlined, ShopOutlined } from '@ant-design/icons'
+import dayjs from 'dayjs'
 
 import { uploadImage } from '@/services/storageService'
-import type { Banner } from '@/types'
+import type { AdBanner } from '@/types'
 
 const { Text } = Typography
+const { RangePicker } = DatePicker
 
-interface BannerFormProps {
+interface AdBannerFormProps {
   mode: 'create' | 'edit'
-  initialValues?: Partial<Banner>
+  initialValues?: Partial<AdBanner>
   onSubmit: (values: Record<string, unknown>) => void
   onCancel: () => void
   isSubmitting?: boolean
@@ -27,23 +29,27 @@ function SectionHeader({ icon, title, description }: { icon: React.ReactNode; ti
   )
 }
 
-export function BannerForm({
+export function AdBannerForm({
   mode,
   initialValues,
   onSubmit,
   onCancel,
   isSubmitting,
-}: BannerFormProps) {
+}: AdBannerFormProps) {
   const [form] = Form.useForm()
   const [uploading, setUploading] = useState(false)
   const [imageUrl, setImageUrl] = useState<string>(initialValues?.image_url || '')
 
   const handleSubmit = () => {
     form.validateFields().then((values) => {
+      const period = values.period
       const submitData = {
         ...values,
         image_url: imageUrl,
+        start_date: period?.[0]?.toISOString() || null,
+        end_date: period?.[1]?.toISOString() || null,
       }
+      delete submitData.period
       onSubmit(submitData)
     })
   }
@@ -51,7 +57,7 @@ export function BannerForm({
   const handleUpload = async (file: File) => {
     setUploading(true)
     try {
-      const url = await uploadImage(file, 'banners')
+      const url = await uploadImage(file, 'ad-banners')
       setImageUrl(url)
       form.setFieldValue('image_url', url)
     } catch {
@@ -62,6 +68,10 @@ export function BannerForm({
     return false
   }
 
+  const periodValue = initialValues?.start_date && initialValues?.end_date
+    ? [dayjs(initialValues.start_date), dayjs(initialValues.end_date)]
+    : undefined
+
   return (
     <Form
       form={form}
@@ -70,35 +80,62 @@ export function BannerForm({
         sort_order: 0,
         is_visible: true,
         ...initialValues,
+        period: periodValue,
       }}
       className="compact-form"
     >
       <Card style={{ marginBottom: 24 }}>
         <SectionHeader
-          icon={<PictureOutlined />}
-          title="이미지 정보"
-          description="메인 화면에 표시될 이미지를 등록합니다"
+          icon={<ShopOutlined />}
+          title="광고주 정보"
+          description="광고주와 광고 내용을 입력합니다"
         />
 
         <Form.Item
-          name="title"
-          label="제목"
-          extra="관리용 제목입니다 (선택)"
+          name="advertiser_name"
+          label="광고주명"
+          rules={[{ required: true, message: '광고주명을 입력해주세요' }]}
+          extra="예: 담다도시락, 아이사랑 등"
         >
-          <Input placeholder="이미지 제목" style={{ width: '100%', maxWidth: 400 }} />
+          <Input placeholder="광고주명 입력" style={{ width: '100%', maxWidth: 300 }} />
         </Form.Item>
 
         <Form.Item
-          label="메인 이미지"
+          name="title"
+          label="광고 제목"
+          rules={[{ required: true, message: '광고 제목을 입력해주세요' }]}
+        >
+          <Input placeholder="광고 제목 입력" style={{ width: '100%', maxWidth: 400 }} />
+        </Form.Item>
+
+        <Form.Item
+          name="link_url"
+          label="외부 링크 URL"
+          rules={[{ required: true, message: '링크 URL을 입력해주세요' }]}
+          extra="배너 클릭 시 이동할 외부 URL을 입력합니다"
+        >
+          <Input placeholder="https://..." style={{ width: '100%', maxWidth: 500 }} />
+        </Form.Item>
+      </Card>
+
+      <Card style={{ marginBottom: 24 }}>
+        <SectionHeader
+          icon={<PictureOutlined />}
+          title="배너 이미지"
+          description="광고 배너 이미지를 등록합니다"
+        />
+
+        <Form.Item
+          label="배너 이미지"
           required
-          extra="권장 사이즈: 1200x400px"
+          extra="권장 사이즈: 1200x300px (가로형 배너)"
         >
           <div style={{ display: 'flex', gap: 16, alignItems: 'flex-start' }}>
             {imageUrl && (
               <Image
                 src={imageUrl}
                 width={300}
-                height={150}
+                height={75}
                 style={{ objectFit: 'cover', borderRadius: 4 }}
               />
             )}
@@ -119,7 +156,7 @@ export function BannerForm({
         <SectionHeader
           icon={<SettingOutlined />}
           title="게시 설정"
-          description="이미지의 노출 설정을 관리합니다"
+          description="광고 배너의 노출 설정을 관리합니다"
         />
 
         <div style={{ display: 'flex', gap: 48, flexWrap: 'wrap' }}>
@@ -129,6 +166,18 @@ export function BannerForm({
             extra="낮은 숫자가 먼저 표시됩니다"
           >
             <InputNumber min={0} style={{ width: 120 }} />
+          </Form.Item>
+
+          <Form.Item
+            name="period"
+            label="노출 기간"
+            extra="설정하지 않으면 상시 노출됩니다"
+          >
+            <RangePicker
+              showTime
+              format="YYYY-MM-DD HH:mm"
+              placeholder={['시작일', '종료일']}
+            />
           </Form.Item>
 
           <Form.Item
