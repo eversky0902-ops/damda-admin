@@ -1334,6 +1334,50 @@ export type Database = {
           },
         ]
       }
+      legal_documents: {
+        Row: {
+          id: string
+          category: string
+          title: string
+          content: string
+          version: number
+          is_visible: boolean
+          created_by: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          category: string
+          title: string
+          content: string
+          version?: number
+          is_visible?: boolean
+          created_by?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          category?: string
+          title?: string
+          content?: string
+          version?: number
+          is_visible?: boolean
+          created_by?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "legal_documents_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "admins"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
