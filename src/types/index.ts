@@ -604,6 +604,50 @@ export interface FAQFilter {
 // 배너 타입
 export type BannerType = 'main' | 'sub'
 
+// 광고 배너 타입
+export interface AdBanner {
+  id: string
+  title: string
+  advertiser_name: string
+  image_url: string
+  link_url: string
+  sort_order: number
+  start_date: string | null
+  end_date: string | null
+  is_visible: boolean
+  created_at: string
+  updated_at: string
+}
+
+// 광고 배너 생성 입력
+export interface AdBannerCreateInput {
+  title: string
+  advertiser_name: string
+  image_url: string
+  link_url: string
+  sort_order?: number
+  start_date?: string
+  end_date?: string
+  is_visible?: boolean
+}
+
+// 광고 배너 수정 입력
+export interface AdBannerUpdateInput {
+  title?: string
+  advertiser_name?: string
+  image_url?: string
+  link_url?: string
+  sort_order?: number
+  start_date?: string | null
+  end_date?: string | null
+  is_visible?: boolean
+}
+
+// 광고 배너 검색 필터
+export interface AdBannerFilter {
+  status?: 'all' | 'visible' | 'hidden'
+}
+
 export interface Banner {
   id: string
   type: BannerType

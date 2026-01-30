@@ -9,6 +9,48 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      ad_banners: {
+        Row: {
+          advertiser_name: string
+          created_at: string
+          end_date: string | null
+          id: string
+          image_url: string
+          is_visible: boolean
+          link_url: string
+          sort_order: number
+          start_date: string | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          advertiser_name: string
+          created_at?: string
+          end_date?: string | null
+          id?: string
+          image_url: string
+          is_visible?: boolean
+          link_url: string
+          sort_order?: number
+          start_date?: string | null
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          advertiser_name?: string
+          created_at?: string
+          end_date?: string | null
+          id?: string
+          image_url?: string
+          is_visible?: boolean
+          link_url?: string
+          sort_order?: number
+          start_date?: string | null
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       admin_logs: {
         Row: {
           action: string

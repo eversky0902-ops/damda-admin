@@ -274,3 +274,14 @@ export const PG_PROVIDER_LABEL: Record<string, string> = {
   inicis: '이니시스',
   kcp: 'KCP',
 }
+
+// 광고 배너 상태 라벨
+export const AD_BANNER_STATUS_LABEL: Record<string, string> = {
+  visible: '공개',
+  hidden: '비공개',
+}
+
+export const AD_BANNER_STATUS_COLOR: Record<string, string> = {
+  visible: 'green',
+  hidden: 'default',
+}

@@ -70,6 +70,7 @@ const menuItems: MenuProps['items'] = [
       { key: '/content/faqs', label: 'FAQ' },
       { key: '/content/banners', label: '배너 관리' },
       { key: '/content/popups', label: '팝업 관리' },
+      { key: '/content/ad-banners', label: '광고 배너' },
       { key: '/content/inquiries', label: '1:1 문의' },
     ],
   },
