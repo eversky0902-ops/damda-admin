@@ -785,6 +785,7 @@ export type Database = {
       products: {
         Row: {
           address: string | null
+          address_detail: string | null
           available_time_slots: Json | null
           business_owner_id: string
           category_id: string | null
@@ -809,6 +810,7 @@ export type Database = {
         }
         Insert: {
           address?: string | null
+          address_detail?: string | null
           available_time_slots?: Json | null
           business_owner_id: string
           category_id?: string | null
@@ -833,6 +835,7 @@ export type Database = {
         }
         Update: {
           address?: string | null
+          address_detail?: string | null
           available_time_slots?: Json | null
           business_owner_id?: string
           category_id?: string | null

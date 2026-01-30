@@ -281,6 +281,7 @@ export interface Product {
   max_participants: number
   duration_minutes: number | null
   address: string | null
+  address_detail: string | null
   latitude: number | null
   longitude: number | null
   region: string | null
@@ -290,9 +291,9 @@ export interface Product {
   view_count: number
   created_at: string
   updated_at: string
-  // 조인 데이터
-  business_owner?: BusinessOwner
-  category?: Category
+  // 조인 데이터 (일부 필드만 조회)
+  business_owner?: Pick<BusinessOwner, 'id' | 'name' | 'email' | 'contact_phone'>
+  category?: Pick<Category, 'id' | 'name' | 'parent_id'>
   options?: ProductOption[]
   images?: ProductImage[]
 }
@@ -349,6 +350,7 @@ export interface ProductCreateInput {
   max_participants: number
   duration_minutes?: number
   address?: string
+  address_detail?: string
   region?: string
   available_time_slots?: TimeSlot[]
   is_visible?: boolean
@@ -369,6 +371,7 @@ export interface ProductUpdateInput {
   max_participants?: number
   duration_minutes?: number | null
   address?: string | null
+  address_detail?: string | null
   region?: string | null
   available_time_slots?: TimeSlot[] | null
   is_visible?: boolean
