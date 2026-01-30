@@ -68,7 +68,7 @@ const menuItems: MenuProps['items'] = [
     children: [
       { key: '/content/notices', label: '공지사항' },
       { key: '/content/faqs', label: 'FAQ' },
-      { key: '/content/banners', label: '배너 관리' },
+      { key: '/content/banners', label: '메인 이미지' },
       { key: '/content/popups', label: '팝업 관리' },
       { key: '/content/ad-banners', label: '광고 배너' },
       { key: '/content/inquiries', label: '1:1 문의' },

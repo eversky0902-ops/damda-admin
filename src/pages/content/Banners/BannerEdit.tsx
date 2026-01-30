@@ -4,7 +4,6 @@ import { Typography, Spin, message } from 'antd'
 
 import { getBanner, updateBanner } from '@/services/bannerService'
 import { BannerForm } from '@/components/BannerForm'
-import type { BannerType } from '@/types'
 
 const { Text } = Typography
 
@@ -22,18 +21,14 @@ export function BannerEditPage() {
   const mutation = useMutation({
     mutationFn: (values: Record<string, unknown>) =>
       updateBanner(id!, {
-        type: values.type as BannerType,
         title: values.title as string | undefined,
         image_url: values.image_url as string,
-        link_url: values.link_url as string | undefined,
         sort_order: values.sort_order as number,
-        start_date: values.start_date as string | null | undefined,
-        end_date: values.end_date as string | null | undefined,
         is_visible: values.is_visible as boolean,
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['banner', id] })
-      message.success('배너가 수정되었습니다')
+      message.success('이미지가 수정되었습니다')
       navigate(`/content/banners/${id}`)
     },
     onError: (error) => {
@@ -50,14 +45,14 @@ export function BannerEditPage() {
   }
 
   if (!banner) {
-    return <div>배너를 찾을 수 없습니다</div>
+    return <div>이미지를 찾을 수 없습니다</div>
   }
 
   return (
     <div>
       <div style={{ marginBottom: 24 }}>
-        <h2 style={{ margin: 0 }}>배너 수정</h2>
-        <Text type="secondary">배너 정보를 수정합니다</Text>
+        <h2 style={{ margin: 0 }}>메인 이미지 수정</h2>
+        <Text type="secondary">이미지 정보를 수정합니다</Text>
       </div>
 
       <BannerForm

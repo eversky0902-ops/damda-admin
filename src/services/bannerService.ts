@@ -11,18 +11,13 @@ import type {
 export async function getBanners(
   params: PaginationParams & BannerFilter
 ): Promise<{ data: Banner[]; total: number }> {
-  const { page, pageSize, type, status } = params
+  const { page, pageSize, status } = params
   const from = (page - 1) * pageSize
   const to = from + pageSize - 1
 
   let query = supabase
     .from('banners')
     .select('*', { count: 'exact' })
-
-  // 타입 필터
-  if (type && type !== 'all') {
-    query = query.eq('type', type)
-  }
 
   // 공개 상태 필터
   if (status && status !== 'all') {
@@ -67,13 +62,10 @@ export async function createBanner(input: BannerCreateInput): Promise<Banner> {
   const { data, error } = await supabase
     .from('banners')
     .insert({
-      type: input.type,
+      type: 'main', // 기본값으로 main 설정
       title: input.title || null,
       image_url: input.image_url,
-      link_url: input.link_url || null,
       sort_order: input.sort_order ?? 0,
-      start_date: input.start_date || null,
-      end_date: input.end_date || null,
       is_visible: input.is_visible ?? true,
     })
     .select()

@@ -604,9 +604,6 @@ export interface FAQFilter {
   search?: string
 }
 
-// 배너 타입
-export type BannerType = 'main' | 'sub'
-
 // 광고 배너 타입
 export interface AdBanner {
   id: string
@@ -651,9 +648,10 @@ export interface AdBannerFilter {
   status?: 'all' | 'visible' | 'hidden'
 }
 
+// 메인 이미지(배너) 타입
 export interface Banner {
   id: string
-  type: BannerType
+  type: string // DB 호환용
   title: string | null
   image_url: string
   link_url: string | null
@@ -665,33 +663,24 @@ export interface Banner {
   updated_at: string
 }
 
-// 배너 생성 입력
+// 메인 이미지 생성 입력
 export interface BannerCreateInput {
-  type: BannerType
   title?: string
   image_url: string
-  link_url?: string
   sort_order?: number
-  start_date?: string
-  end_date?: string
   is_visible?: boolean
 }
 
-// 배너 수정 입력
+// 메인 이미지 수정 입력
 export interface BannerUpdateInput {
-  type?: BannerType
   title?: string
   image_url?: string
-  link_url?: string
   sort_order?: number
-  start_date?: string | null
-  end_date?: string | null
   is_visible?: boolean
 }
 
-// 배너 검색 필터
+// 메인 이미지 검색 필터
 export interface BannerFilter {
-  type?: BannerType | 'all'
   status?: 'all' | 'visible' | 'hidden'
 }
 

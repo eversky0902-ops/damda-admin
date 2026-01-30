@@ -207,17 +207,6 @@ export const FAQ_CATEGORY_LABEL: Record<string, string> = {
   etc: '기타',
 }
 
-// 배너 타입 라벨
-export const BANNER_TYPE_LABEL: Record<string, string> = {
-  main: '메인 배너',
-  sub: '서브 배너',
-}
-
-export const BANNER_TYPE_COLOR: Record<string, string> = {
-  main: 'blue',
-  sub: 'green',
-}
-
 // 팝업 위치 라벨
 export const POPUP_POSITION_LABEL: Record<string, string> = {
   center: '중앙',

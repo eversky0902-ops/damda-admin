@@ -1,13 +1,11 @@
 import { useState } from 'react'
-import { Form, Input, Select, Switch, Button, Card, InputNumber, DatePicker, Upload, Typography, Image } from 'antd'
+import { Form, Input, Switch, Button, Card, InputNumber, Upload, Typography, Image } from 'antd'
 import { ArrowLeftOutlined, PictureOutlined, SettingOutlined, UploadOutlined } from '@ant-design/icons'
-import dayjs from 'dayjs'
 
 import { uploadImage } from '@/services/storageService'
 import type { Banner } from '@/types'
 
 const { Text } = Typography
-const { RangePicker } = DatePicker
 
 interface BannerFormProps {
   mode: 'create' | 'edit'
@@ -42,14 +40,10 @@ export function BannerForm({
 
   const handleSubmit = () => {
     form.validateFields().then((values) => {
-      const period = values.period
       const submitData = {
         ...values,
         image_url: imageUrl,
-        start_date: period?.[0]?.toISOString() || null,
-        end_date: period?.[1]?.toISOString() || null,
       }
-      delete submitData.period
       onSubmit(submitData)
     })
   }
@@ -68,63 +62,43 @@ export function BannerForm({
     return false
   }
 
-  const periodValue = initialValues?.start_date && initialValues?.end_date
-    ? [dayjs(initialValues.start_date), dayjs(initialValues.end_date)]
-    : undefined
-
   return (
     <Form
       form={form}
       layout="vertical"
       initialValues={{
-        type: 'main',
         sort_order: 0,
         is_visible: true,
         ...initialValues,
-        period: periodValue,
       }}
       className="compact-form"
     >
       <Card style={{ marginBottom: 24 }}>
         <SectionHeader
           icon={<PictureOutlined />}
-          title="배너 정보"
-          description="배너의 기본 정보를 입력합니다"
+          title="이미지 정보"
+          description="메인 화면에 표시될 이미지를 등록합니다"
         />
-
-        <Form.Item
-          name="type"
-          label="배너 타입"
-          rules={[{ required: true, message: '배너 타입을 선택해주세요' }]}
-        >
-          <Select
-            placeholder="배너 타입 선택"
-            style={{ width: 200 }}
-            options={[
-              { value: 'main', label: '메인 배너' },
-              { value: 'sub', label: '서브 배너' },
-            ]}
-          />
-        </Form.Item>
 
         <Form.Item
           name="title"
           label="제목"
+          extra="관리용 제목입니다 (선택)"
         >
-          <Input placeholder="배너 제목 (선택)" style={{ width: '100%', maxWidth: 400 }} />
+          <Input placeholder="이미지 제목" style={{ width: '100%', maxWidth: 400 }} />
         </Form.Item>
 
         <Form.Item
-          label="배너 이미지"
+          label="메인 이미지"
           required
-          extra="권장 사이즈: 메인 배너 1200x400px, 서브 배너 600x200px"
+          extra="권장 사이즈: 1200x400px"
         >
           <div style={{ display: 'flex', gap: 16, alignItems: 'flex-start' }}>
             {imageUrl && (
               <Image
                 src={imageUrl}
-                width={200}
-                height={100}
+                width={300}
+                height={150}
                 style={{ objectFit: 'cover', borderRadius: 4 }}
               />
             )}
@@ -139,21 +113,13 @@ export function BannerForm({
             </Upload>
           </div>
         </Form.Item>
-
-        <Form.Item
-          name="link_url"
-          label="링크 URL"
-          extra="배너 클릭 시 이동할 URL을 입력합니다"
-        >
-          <Input placeholder="https://..." style={{ width: '100%', maxWidth: 500 }} />
-        </Form.Item>
       </Card>
 
       <Card style={{ marginBottom: 24 }}>
         <SectionHeader
           icon={<SettingOutlined />}
           title="게시 설정"
-          description="배너의 노출 설정을 관리합니다"
+          description="이미지의 노출 설정을 관리합니다"
         />
 
         <div style={{ display: 'flex', gap: 48, flexWrap: 'wrap' }}>
@@ -163,18 +129,6 @@ export function BannerForm({
             extra="낮은 숫자가 먼저 표시됩니다"
           >
             <InputNumber min={0} style={{ width: 120 }} />
-          </Form.Item>
-
-          <Form.Item
-            name="period"
-            label="노출 기간"
-            extra="설정하지 않으면 상시 노출됩니다"
-          >
-            <RangePicker
-              showTime
-              format="YYYY-MM-DD HH:mm"
-              placeholder={['시작일', '종료일']}
-            />
           </Form.Item>
 
           <Form.Item

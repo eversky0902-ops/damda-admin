@@ -7,8 +7,8 @@ import type { ColumnsType, TablePaginationConfig } from 'antd/es/table'
 import dayjs from 'dayjs'
 
 import { getBanners, toggleBannerVisibility, deleteBanner } from '@/services/bannerService'
-import { BANNER_TYPE_LABEL, BANNER_TYPE_COLOR, NOTICE_VISIBILITY_LABEL, NOTICE_VISIBILITY_COLOR, DEFAULT_PAGE_SIZE, DATE_FORMAT } from '@/constants'
-import type { Banner, BannerType } from '@/types'
+import { NOTICE_VISIBILITY_LABEL, NOTICE_VISIBILITY_COLOR, DEFAULT_PAGE_SIZE, DATETIME_FORMAT } from '@/constants'
+import type { Banner } from '@/types'
 
 export function BannersPage() {
   const navigate = useNavigate()
@@ -16,16 +16,14 @@ export function BannersPage() {
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE)
   const [statusFilter, setStatusFilter] = useState<'all' | 'visible' | 'hidden'>('all')
-  const [typeFilter, setTypeFilter] = useState<BannerType | 'all'>('all')
 
   const { data, isLoading } = useQuery({
-    queryKey: ['banners', page, pageSize, statusFilter, typeFilter],
+    queryKey: ['banners', page, pageSize, statusFilter],
     queryFn: () =>
       getBanners({
         page,
         pageSize,
         status: statusFilter,
-        type: typeFilter,
       }),
   })
 
@@ -45,7 +43,7 @@ export function BannersPage() {
     mutationFn: deleteBanner,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['banners'] })
-      message.success('배너가 삭제되었습니다')
+      message.success('이미지가 삭제되었습니다')
     },
     onError: () => {
       message.error('삭제에 실패했습니다')
@@ -69,25 +67,16 @@ export function BannersPage() {
       title: '이미지',
       dataIndex: 'image_url',
       key: 'image_url',
-      width: 120,
+      width: 200,
       render: (url: string) => (
         <Image
           src={url}
-          width={100}
-          height={50}
+          width={180}
+          height={90}
           style={{ objectFit: 'cover', borderRadius: 4 }}
           preview={{ mask: '미리보기' }}
           onClick={(e) => e.stopPropagation()}
         />
-      ),
-    },
-    {
-      title: '타입',
-      dataIndex: 'type',
-      key: 'type',
-      width: 100,
-      render: (type: BannerType) => (
-        <Tag color={BANNER_TYPE_COLOR[type]}>{BANNER_TYPE_LABEL[type]}</Tag>
       ),
     },
     {
@@ -101,25 +90,6 @@ export function BannersPage() {
       ),
     },
     {
-      title: '링크',
-      dataIndex: 'link_url',
-      key: 'link_url',
-      width: 150,
-      ellipsis: true,
-      render: (url: string | null) => url || '-',
-    },
-    {
-      title: '노출기간',
-      key: 'period',
-      width: 180,
-      render: (_, record) => {
-        if (!record.start_date && !record.end_date) return '상시'
-        const start = record.start_date ? dayjs(record.start_date).format(DATE_FORMAT) : '-'
-        const end = record.end_date ? dayjs(record.end_date).format(DATE_FORMAT) : '-'
-        return `${start} ~ ${end}`
-      },
-    },
-    {
       title: '상태',
       dataIndex: 'is_visible',
       key: 'is_visible',
@@ -129,6 +99,13 @@ export function BannersPage() {
           {NOTICE_VISIBILITY_LABEL[isVisible ? 'visible' : 'hidden']}
         </Tag>
       ),
+    },
+    {
+      title: '등록일',
+      dataIndex: 'created_at',
+      key: 'created_at',
+      width: 160,
+      render: (date: string) => dayjs(date).format(DATETIME_FORMAT),
     },
     {
       title: '공개',
@@ -150,7 +127,7 @@ export function BannersPage() {
       width: 50,
       render: (_, record) => (
         <Popconfirm
-          title="배너 삭제"
+          title="이미지 삭제"
           description="정말 삭제하시겠습니까?"
           onConfirm={(e) => {
             e?.stopPropagation()
@@ -175,13 +152,13 @@ export function BannersPage() {
   return (
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 16 }}>
-        <h2 style={{ margin: 0 }}>배너 관리</h2>
+        <h2 style={{ margin: 0 }}>메인 이미지 관리</h2>
         <Button
           type="primary"
           icon={<PlusOutlined />}
           onClick={() => navigate('/content/banners/new')}
         >
-          배너 등록
+          이미지 등록
         </Button>
       </div>
 
@@ -193,19 +170,6 @@ export function BannersPage() {
         background: '#fafafa',
         borderRadius: 6,
       }}>
-        <Select
-          value={typeFilter}
-          onChange={(value) => {
-            setTypeFilter(value)
-            setPage(1)
-          }}
-          style={{ width: 120 }}
-          options={[
-            { value: 'all', label: '전체 타입' },
-            { value: 'main', label: '메인 배너' },
-            { value: 'sub', label: '서브 배너' },
-          ]}
-        />
         <Select
           value={statusFilter}
           onChange={(value) => {
