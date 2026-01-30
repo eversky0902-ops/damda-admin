@@ -51,6 +51,9 @@ import { AdBannerCreatePage } from '@/pages/content/AdBanners/AdBannerCreate'
 import { AdBannerEditPage } from '@/pages/content/AdBanners/AdBannerEdit'
 import { InquiriesPage } from '@/pages/content/Inquiries'
 import { InquiryDetailPage } from '@/pages/content/Inquiries/InquiryDetail'
+import { LegalDocumentsPage } from '@/pages/content/LegalDocuments'
+import { LegalDocumentDetailPage } from '@/pages/content/LegalDocuments/LegalDocumentDetail'
+import { LegalDocumentCreatePage } from '@/pages/content/LegalDocuments/LegalDocumentCreate'
 
 // Settings Pages
 import { SettingsPage } from '@/pages/settings'
@@ -262,6 +265,19 @@ export const router = createBrowserRouter([
       {
         path: 'content/inquiries/:id',
         element: <InquiryDetailPage />,
+      },
+      // Content - Legal Documents
+      {
+        path: 'content/legal-documents',
+        element: <LegalDocumentsPage />,
+      },
+      {
+        path: 'content/legal-documents/new',
+        element: <LegalDocumentCreatePage />,
+      },
+      {
+        path: 'content/legal-documents/:id',
+        element: <LegalDocumentDetailPage />,
       },
       // Settings
       {
