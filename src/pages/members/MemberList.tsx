@@ -127,9 +127,11 @@ export function MemberListPage() {
           style={{ width: 120 }}
           options={[
             { value: 'all', label: '전체 상태' },
+            { value: 'pending', label: '가입대기' },
             { value: 'requested', label: '승인요청' },
             { value: 'approved', label: '승인완료' },
             { value: 'rejected', label: '승인거절' },
+            { value: 'revision_required', label: '보완필요' },
           ]}
         />
         <Button type="primary" onClick={handleSearch}>

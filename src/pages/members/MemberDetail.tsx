@@ -48,6 +48,7 @@ export function MemberDetailPage() {
   const [statusModalOpen, setStatusModalOpen] = useState(false)
   const [selectedStatus, setSelectedStatus] = useState<DaycareStatus | null>(null)
   const [rejectReason, setRejectReason] = useState('')
+  const [revisionReason, setRevisionReason] = useState('')
   const [memoContent, setMemoContent] = useState('')
 
   // 어린이집 상세 조회
@@ -66,8 +67,8 @@ export function MemberDetailPage() {
 
   // 상태 변경 mutation
   const statusMutation = useMutation({
-    mutationFn: ({ status, reason }: { status: DaycareStatus; reason?: string }) =>
-      updateDaycareStatus(id!, status, reason),
+    mutationFn: ({ status, rejectionReason, revisionReason }: { status: DaycareStatus; rejectionReason?: string; revisionReason?: string }) =>
+      updateDaycareStatus(id!, status, { rejectionReason, revisionReason }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['daycare', id] })
       queryClient.invalidateQueries({ queryKey: ['daycares'] })
@@ -106,6 +107,7 @@ export function MemberDetailPage() {
   const handleOpenStatusModal = () => {
     setSelectedStatus(daycare?.status as DaycareStatus || null)
     setRejectReason('')
+    setRevisionReason('')
     setStatusModalOpen(true)
   }
 
@@ -117,13 +119,23 @@ export function MemberDetailPage() {
       return
     }
 
+    if (selectedStatus === 'revision_required' && !revisionReason.trim()) {
+      message.warning('보완 사유를 입력해주세요')
+      return
+    }
+
     statusMutation.mutate(
-      { status: selectedStatus, reason: selectedStatus === 'rejected' ? rejectReason : undefined },
+      {
+        status: selectedStatus,
+        rejectionReason: selectedStatus === 'rejected' ? rejectReason : undefined,
+        revisionReason: selectedStatus === 'revision_required' ? revisionReason : undefined,
+      },
       {
         onSuccess: () => {
           setStatusModalOpen(false)
           setSelectedStatus(null)
           setRejectReason('')
+          setRevisionReason('')
         }
       }
     )
@@ -202,6 +214,46 @@ export function MemberDetailPage() {
               <span style={{ color: '#ff4d4f', fontWeight: 500 }}>
                 거절 사유: {daycare.rejection_reason}
               </span>
+            </div>
+          )}
+
+          {daycare.status === 'revision_required' && daycare.revision_reason && (
+            <div style={{ marginTop: 12, padding: 12, background: '#fffbe6', borderRadius: 4 }}>
+              <div style={{ color: '#faad14', fontWeight: 500, marginBottom: 8 }}>
+                보완 요청 사유: {daycare.revision_reason}
+              </div>
+              {daycare.revision_requested_at && (
+                <div style={{ fontSize: 12, color: '#999' }}>
+                  요청일시: {formatDateTime(daycare.revision_requested_at)}
+                </div>
+              )}
+            </div>
+          )}
+
+          {daycare.revision_submitted_at && (
+            <div style={{ marginTop: 12, padding: 12, background: '#f6ffed', borderRadius: 4 }}>
+              <div style={{ color: '#52c41a', fontWeight: 500, marginBottom: 8 }}>
+                보완 제출 완료
+              </div>
+              <div style={{ fontSize: 12, color: '#666', marginBottom: 4 }}>
+                제출일시: {formatDateTime(daycare.revision_submitted_at)}
+              </div>
+              {daycare.revision_response && (
+                <div style={{ marginTop: 8 }}>
+                  <div style={{ fontSize: 12, color: '#999', marginBottom: 4 }}>사용자 응답:</div>
+                  <div style={{ background: '#fff', padding: 8, borderRadius: 4 }}>
+                    {daycare.revision_response}
+                  </div>
+                </div>
+              )}
+              {daycare.revision_file && (
+                <div style={{ marginTop: 8 }}>
+                  <div style={{ fontSize: 12, color: '#999', marginBottom: 4 }}>첨부파일:</div>
+                  <a href={daycare.revision_file} target="_blank" rel="noopener noreferrer">
+                    파일 보기
+                  </a>
+                </div>
+              )}
             </div>
           )}
 
@@ -311,6 +363,7 @@ export function MemberDetailPage() {
           setStatusModalOpen(false)
           setSelectedStatus(null)
           setRejectReason('')
+          setRevisionReason('')
         }}
         okText="변경"
         cancelText="취소"
@@ -323,9 +376,11 @@ export function MemberDetailPage() {
             onChange={setSelectedStatus}
             style={{ width: '100%' }}
             options={[
+              { value: 'pending', label: '가입대기' },
               { value: 'requested', label: '승인요청' },
               { value: 'approved', label: '승인완료' },
               { value: 'rejected', label: '승인거절' },
+              { value: 'revision_required', label: '보완필요' },
             ]}
           />
         </div>
@@ -336,6 +391,17 @@ export function MemberDetailPage() {
               value={rejectReason}
               onChange={(e) => setRejectReason(e.target.value)}
               placeholder="거절 사유를 입력해주세요"
+              rows={4}
+            />
+          </div>
+        )}
+        {selectedStatus === 'revision_required' && (
+          <div>
+            <div style={{ marginBottom: 8, fontWeight: 500 }}>보완 사유</div>
+            <TextArea
+              value={revisionReason}
+              onChange={(e) => setRevisionReason(e.target.value)}
+              placeholder="보완이 필요한 사유를 입력해주세요"
               rows={4}
             />
           </div>

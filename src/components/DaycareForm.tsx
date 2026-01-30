@@ -7,6 +7,20 @@ import type { Daycare } from '@/types'
 
 const { Text } = Typography
 
+// 핸드폰 번호 포맷팅 (숫자만 추출 후 010-0000-0000 형식으로 변환)
+function formatPhoneNumber(value: string): string {
+  const numbers = value.replace(/[^0-9]/g, '')
+  if (numbers.length <= 3) return numbers
+  if (numbers.length <= 7) return `${numbers.slice(0, 3)}-${numbers.slice(3)}`
+  return `${numbers.slice(0, 3)}-${numbers.slice(3, 7)}-${numbers.slice(7, 11)}`
+}
+
+// 핸드폰 번호 유효성 검사 (010으로 시작하는 11자리)
+function isValidMobilePhone(value: string): boolean {
+  const numbers = value.replace(/[^0-9]/g, '')
+  return /^010\d{8}$/.test(numbers)
+}
+
 function SectionHeader({ icon, title, description }: { icon: React.ReactNode; title: string; description: string }) {
   return (
     <div style={{ marginBottom: 24 }}>
@@ -146,9 +160,20 @@ export function DaycareForm({
               <Form.Item
                 name="contact_phone"
                 label="담당자 연락처"
-                rules={[{ required: true, message: '연락처를 입력하세요' }]}
+                extra="휴대폰 번호만 입력 가능합니다"
+                rules={[
+                  { required: true, message: '연락처를 입력하세요' },
+                  {
+                    validator: (_, value) => {
+                      if (!value) return Promise.resolve()
+                      if (isValidMobilePhone(value)) return Promise.resolve()
+                      return Promise.reject(new Error('010으로 시작하는 휴대폰 번호를 입력하세요'))
+                    },
+                  },
+                ]}
+                getValueFromEvent={(e) => formatPhoneNumber(e.target.value)}
               >
-                <Input placeholder="010-0000-0000" style={{ width: 180 }} />
+                <Input placeholder="010-0000-0000" style={{ width: 180 }} maxLength={13} />
               </Form.Item>
             </Col>
           </Row>

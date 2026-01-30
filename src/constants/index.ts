@@ -68,6 +68,7 @@ export const DAYCARE_STATUS_LABEL: Record<string, string> = {
   requested: '승인요청',
   approved: '승인완료',
   rejected: '승인거절',
+  revision_required: '보완필요',
 }
 
 export const DAYCARE_STATUS_COLOR: Record<string, string> = {
@@ -75,6 +76,7 @@ export const DAYCARE_STATUS_COLOR: Record<string, string> = {
   requested: 'processing',
   approved: 'success',
   rejected: 'error',
+  revision_required: 'warning',
 }
 
 // 상품 상태 라벨
@@ -271,6 +273,39 @@ export const AD_BANNER_STATUS_LABEL: Record<string, string> = {
 }
 
 export const AD_BANNER_STATUS_COLOR: Record<string, string> = {
+  visible: 'green',
+  hidden: 'default',
+}
+
+// 법적 문서 카테고리 옵션
+export const LEGAL_DOCUMENT_CATEGORY_OPTIONS = [
+  { value: 'terms', label: '이용약관' },
+  { value: 'privacy', label: '개인정보처리방침' },
+  { value: 'refund-policy', label: '환불정책' },
+  { value: 'reservation-guide', label: '예약안내' },
+]
+
+export const LEGAL_DOCUMENT_CATEGORY_LABEL: Record<string, string> = {
+  'terms': '이용약관',
+  'privacy': '개인정보처리방침',
+  'refund-policy': '환불정책',
+  'reservation-guide': '예약안내',
+}
+
+export const LEGAL_DOCUMENT_CATEGORY_COLOR: Record<string, string> = {
+  'terms': 'blue',
+  'privacy': 'green',
+  'refund-policy': 'orange',
+  'reservation-guide': 'purple',
+}
+
+// 법적 문서 공개 상태 라벨
+export const LEGAL_DOCUMENT_VISIBILITY_LABEL: Record<string, string> = {
+  visible: '공개',
+  hidden: '비공개',
+}
+
+export const LEGAL_DOCUMENT_VISIBILITY_COLOR: Record<string, string> = {
   visible: 'green',
   hidden: 'default',
 }

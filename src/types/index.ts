@@ -152,7 +152,7 @@ export interface VendorFilter {
 }
 
 // 어린이집(회원) 상태
-export type DaycareStatus = 'pending' | 'requested' | 'approved' | 'rejected'
+export type DaycareStatus = 'pending' | 'requested' | 'approved' | 'rejected' | 'revision_required'
 
 // 어린이집(회원) 타입
 export interface Daycare {
@@ -171,8 +171,13 @@ export interface Daycare {
   tel: string | null
   capacity: number | null
   status: DaycareStatus
-  rejection_reason: string | null
-  approved_at: string | null
+  rejection_reason?: string | null
+  revision_reason?: string | null
+  revision_response?: string | null
+  revision_file?: string | null
+  revision_requested_at?: string | null
+  revision_submitted_at?: string | null
+  approved_at?: string | null
   created_at: string
   updated_at: string
 }
@@ -820,4 +825,38 @@ export interface AdminLogFilter {
   search?: string
   date_from?: string
   date_to?: string
+}
+
+// 법적 문서 카테고리 타입
+export type LegalDocumentCategory = 'terms' | 'privacy' | 'refund-policy' | 'reservation-guide'
+
+// 법적 문서 타입
+export interface LegalDocument {
+  id: string
+  category: LegalDocumentCategory
+  title: string
+  content: string
+  version: number
+  is_visible: boolean
+  created_by: string | null
+  created_at: string
+  updated_at: string
+  admin?: {
+    name: string
+  }
+}
+
+// 법적 문서 생성 입력
+export interface LegalDocumentCreateInput {
+  category: LegalDocumentCategory
+  title: string
+  content: string
+  is_visible?: boolean
+}
+
+// 법적 문서 검색 필터
+export interface LegalDocumentFilter {
+  category?: LegalDocumentCategory | 'all'
+  status?: 'all' | 'visible' | 'hidden'
+  search?: string
 }
