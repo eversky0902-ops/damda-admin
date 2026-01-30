@@ -196,7 +196,6 @@ export async function updateProduct(id: string, input: ProductUpdateInput): Prom
 
     if (options.length > 0) {
       const optionsData = options.map((option, index) => ({
-        id: option.id || undefined,
         product_id: id,
         name: option.name,
         price: option.price,
