@@ -236,6 +236,7 @@ export interface Category {
   depth: number
   sort_order: number
   is_active: boolean
+  icon_url: string | null
   created_at: string
   updated_at: string
   children?: Category[]
@@ -248,6 +249,7 @@ export interface CategoryCreateInput {
   depth: number
   sort_order?: number
   is_active?: boolean
+  icon_url?: string | null
 }
 
 // 카테고리 수정 입력
@@ -256,6 +258,7 @@ export interface CategoryUpdateInput {
   parent_id?: string | null
   sort_order?: number
   is_active?: boolean
+  icon_url?: string | null
 }
 
 // 카테고리 검색 필터

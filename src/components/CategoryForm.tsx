@@ -1,13 +1,26 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { Form, Input, InputNumber, Select, Switch, Button, Card, Typography, TreeSelect } from 'antd'
-import { ArrowLeftOutlined, FolderOutlined } from '@ant-design/icons'
+import { Form, Input, InputNumber, Select, Switch, Button, Card, Typography, TreeSelect, Upload, message } from 'antd'
+import { ArrowLeftOutlined, FolderOutlined, UploadOutlined, DeleteOutlined } from '@ant-design/icons'
 
 import { getAllCategories, buildCategoryTree, type CategoryTreeNode } from '@/services/categoryService'
 import { CATEGORY_DEPTH_LABEL } from '@/constants'
+import { supabase } from '@/lib/supabase'
 import type { Category } from '@/types'
 
 const { Text } = Typography
+
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL
+const USER_SITE_URL = import.meta.env.VITE_USER_SITE_URL || 'https://withdamda.kr'
+
+// 아이콘 URL 변환 (상대경로인 경우 사용자 사이트 URL 추가)
+function resolveIconUrl(iconUrl: string | null): string | null {
+  if (!iconUrl) return null
+  if (iconUrl.startsWith('/')) {
+    return `${USER_SITE_URL}${iconUrl}`
+  }
+  return iconUrl
+}
 
 interface CategoryFormProps {
   mode: 'create' | 'edit'
@@ -23,6 +36,7 @@ export interface CategoryFormValues {
   depth: number
   sort_order: number
   is_active: boolean
+  icon_url: string | null
 }
 
 // 섹션 헤더 컴포넌트
@@ -66,6 +80,8 @@ export function CategoryForm({
 }: CategoryFormProps) {
   const [form] = Form.useForm<CategoryFormValues>()
   const parentId = Form.useWatch('parent_id', form)
+  const [iconUrl, setIconUrl] = useState<string | null>(null)
+  const [uploading, setUploading] = useState(false)
 
   // 모든 카테고리 조회
   const { data: categories } = useQuery({
@@ -97,9 +113,47 @@ export function CategoryForm({
         depth: initialValues.depth || 1,
         sort_order: initialValues.sort_order ?? 0,
         is_active: initialValues.is_active ?? true,
+        icon_url: initialValues.icon_url || null,
       })
+      setIconUrl(initialValues.icon_url || null)
     }
   }, [initialValues, form])
+
+  // 아이콘 업로드 핸들러
+  const handleIconUpload = async (file: File) => {
+    setUploading(true)
+    try {
+      const fileExt = file.name.split('.').pop()
+      const fileName = `category-icons/${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`
+
+      const { error: uploadError } = await supabase.storage
+        .from('public')
+        .upload(fileName, file, {
+          cacheControl: '3600',
+          upsert: false,
+        })
+
+      if (uploadError) {
+        throw uploadError
+      }
+
+      const url = `${SUPABASE_URL}/storage/v1/object/public/public/${fileName}`
+      setIconUrl(url)
+      form.setFieldValue('icon_url', url)
+      message.success('아이콘이 업로드되었습니다.')
+    } catch (error) {
+      console.error('Upload error:', error)
+      message.error('아이콘 업로드에 실패했습니다.')
+    } finally {
+      setUploading(false)
+    }
+  }
+
+  // 아이콘 삭제 핸들러
+  const handleIconRemove = () => {
+    setIconUrl(null)
+    form.setFieldValue('icon_url', null)
+  }
 
   const handleSubmit = () => {
     form.validateFields().then((values) => {
@@ -120,6 +174,7 @@ export function CategoryForm({
         depth: 1,
         sort_order: 0,
         is_active: true,
+        icon_url: null,
       }}
     >
       <Card style={{ marginBottom: 24 }}>
@@ -137,6 +192,63 @@ export function CategoryForm({
         >
           <Input placeholder="카테고리명을 입력하세요" style={{ width: 280 }} />
         </Form.Item>
+
+        {currentDepth === 1 && (
+          <Form.Item
+            name="icon_url"
+            label="카테고리 아이콘"
+            extra="대분류 카테고리의 아이콘입니다. SVG, PNG, JPG 파일을 업로드하세요."
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+              {iconUrl && (
+                <div style={{
+                  width: 64,
+                  height: 64,
+                  border: '1px solid #d9d9d9',
+                  borderRadius: 8,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  background: '#fafafa',
+                  position: 'relative',
+                }}>
+                  <img
+                    src={resolveIconUrl(iconUrl)!}
+                    alt="카테고리 아이콘"
+                    style={{ maxWidth: 48, maxHeight: 48, objectFit: 'contain' }}
+                  />
+                  <Button
+                    type="text"
+                    danger
+                    size="small"
+                    icon={<DeleteOutlined />}
+                    onClick={handleIconRemove}
+                    style={{
+                      position: 'absolute',
+                      top: -8,
+                      right: -8,
+                      background: '#fff',
+                      borderRadius: '50%',
+                      boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+                    }}
+                  />
+                </div>
+              )}
+              <Upload
+                accept=".svg,.png,.jpg,.jpeg"
+                showUploadList={false}
+                beforeUpload={(file) => {
+                  handleIconUpload(file)
+                  return false
+                }}
+              >
+                <Button icon={<UploadOutlined />} loading={uploading}>
+                  {iconUrl ? '아이콘 변경' : '아이콘 업로드'}
+                </Button>
+              </Upload>
+            </div>
+          </Form.Item>
+        )}
 
         <Form.Item
           name="parent_id"
