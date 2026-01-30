@@ -146,6 +146,7 @@ export type Database = {
           email: string
           id: string
           latitude: number | null
+          logo_url: string | null
           longitude: number | null
           name: string
           representative: string
@@ -165,8 +166,9 @@ export type Database = {
           contact_phone: string
           created_at?: string
           email: string
-          id: string
+          id?: string
           latitude?: number | null
+          logo_url?: string | null
           longitude?: number | null
           name: string
           representative: string
@@ -188,6 +190,7 @@ export type Database = {
           email?: string
           id?: string
           latitude?: number | null
+          logo_url?: string | null
           longitude?: number | null
           name?: string
           representative?: string

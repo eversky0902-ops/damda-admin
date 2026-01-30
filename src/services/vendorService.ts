@@ -63,37 +63,11 @@ export async function getVendor(id: string): Promise<BusinessOwner> {
 
 // 사업주 생성
 export async function createVendor(input: BusinessOwnerCreateInput): Promise<BusinessOwner> {
-  // Supabase Auth로 사용자 생성 후 business_owners에 추가
-  // 관리자가 생성하는 경우 임시 비밀번호 설정
-  const tempPassword = Math.random().toString(36).slice(-8) + 'A1!'
-
-  const { data: authData, error: authError } = await supabase.auth.admin.createUser({
-    email: input.email,
-    password: tempPassword,
-    email_confirm: true,
-  })
-
-  if (authError) {
-    throw new Error(authError.message)
-  }
-
-  // user_roles에 역할 추가
-  const { error: roleError } = await supabase.from('user_roles').insert({
-    id: authData.user.id,
-    role: 'business_owner',
-  })
-
-  if (roleError) {
-    // 롤백: auth 사용자 삭제
-    await supabase.auth.admin.deleteUser(authData.user.id)
-    throw new Error(roleError.message)
-  }
-
-  // business_owners에 데이터 추가
+  // business_owners에 데이터 추가 (id는 자동 생성)
+  // 사업주 로그인 기능은 2차 버전에서 구현 예정
   const { data, error } = await supabase
     .from('business_owners')
     .insert({
-      id: authData.user.id,
       email: input.email,
       name: input.name,
       business_number: input.business_number,
@@ -113,8 +87,6 @@ export async function createVendor(input: BusinessOwnerCreateInput): Promise<Bus
     .single()
 
   if (error) {
-    // 롤백
-    await supabase.auth.admin.deleteUser(authData.user.id)
     throw new Error(error.message)
   }
 
