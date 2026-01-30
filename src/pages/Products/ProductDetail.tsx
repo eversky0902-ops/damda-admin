@@ -240,9 +240,39 @@ export function ProductDetailPage() {
             </Descriptions.Item>
             <Descriptions.Item label="상세 설명" span={2}>
               <div
-                style={{ whiteSpace: 'pre-wrap' }}
+                className="product-description-content"
                 dangerouslySetInnerHTML={{ __html: product.description || '-' }}
               />
+              <style>{`
+                .product-description-content {
+                  line-height: 1.6;
+                }
+                .product-description-content img {
+                  max-width: 600px !important;
+                  height: auto !important;
+                  border-radius: 8px;
+                  display: block;
+                  margin: 12px 0;
+                }
+                .product-description-content p {
+                  margin: 8px 0;
+                }
+                .product-description-content h1,
+                .product-description-content h2,
+                .product-description-content h3,
+                .product-description-content h4 {
+                  margin: 16px 0 8px 0;
+                  font-weight: 600;
+                }
+                .product-description-content ul,
+                .product-description-content ol {
+                  padding-left: 20px;
+                  margin: 8px 0;
+                }
+                .product-description-content li {
+                  margin: 4px 0;
+                }
+              `}</style>
             </Descriptions.Item>
           </Descriptions>
         </>

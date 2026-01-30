@@ -1283,9 +1283,8 @@ export function ProductForm({
               min-height: 300px;
             }
             .product-description-editor .ql-editor img {
-              max-width: 600px;
-              width: 100%;
-              height: auto;
+              max-width: 600px !important;
+              height: auto !important;
               border-radius: 8px;
             }
           `}</style>
