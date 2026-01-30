@@ -164,14 +164,33 @@ export async function getChildCategories(parentId: string): Promise<Category[]> 
 
 // 카테고리 생성
 export async function createCategory(input: CategoryCreateInput): Promise<Category> {
+  // 기존 형제 카테고리들의 sort_order를 +1씩 증가 (새 카테고리가 0으로 맨 앞에 오도록)
+  const siblingQuery = input.parent_id
+    ? supabase.from('categories').select('id, sort_order').eq('parent_id', input.parent_id)
+    : supabase.from('categories').select('id, sort_order').is('parent_id', null)
+
+  const { data: siblings } = await siblingQuery
+
+  // 기존 형제들의 sort_order를 +1 증가
+  if (siblings && siblings.length > 0) {
+    const updates = siblings.map((sibling) =>
+      supabase
+        .from('categories')
+        .update({ sort_order: (sibling.sort_order || 0) + 1 })
+        .eq('id', sibling.id)
+    )
+    await Promise.all(updates)
+  }
+
   const { data, error } = await supabase
     .from('categories')
     .insert({
       name: input.name,
       parent_id: input.parent_id || null,
       depth: input.depth,
-      sort_order: input.sort_order ?? 0,
+      sort_order: 0, // 새 카테고리는 항상 0
       is_active: input.is_active ?? true,
+      icon_url: input.icon_url || null,
     })
     .select()
     .single()
@@ -207,6 +226,13 @@ export async function updateCategory(
 
 // 카테고리 삭제
 export async function deleteCategory(id: string): Promise<void> {
+  // 삭제할 카테고리 정보 조회 (parent_id, sort_order 필요)
+  const { data: categoryToDelete } = await supabase
+    .from('categories')
+    .select('parent_id, sort_order')
+    .eq('id', id)
+    .single()
+
   // 하위 카테고리 확인
   const { count: childCount } = await supabase
     .from('categories')
@@ -234,6 +260,35 @@ export async function deleteCategory(id: string): Promise<void> {
 
   if (error) {
     throw new Error(error.message)
+  }
+
+  // 삭제 후 형제 카테고리들의 sort_order 재정렬
+  if (categoryToDelete) {
+    // 삭제된 카테고리보다 sort_order가 큰 형제들 조회
+    const siblingQuery = categoryToDelete.parent_id
+      ? supabase
+          .from('categories')
+          .select('id, sort_order')
+          .eq('parent_id', categoryToDelete.parent_id)
+          .gt('sort_order', categoryToDelete.sort_order)
+      : supabase
+          .from('categories')
+          .select('id, sort_order')
+          .is('parent_id', null)
+          .gt('sort_order', categoryToDelete.sort_order)
+
+    const { data: siblings } = await siblingQuery
+
+    // sort_order를 1씩 감소
+    if (siblings && siblings.length > 0) {
+      const updates = siblings.map((sibling) =>
+        supabase
+          .from('categories')
+          .update({ sort_order: sibling.sort_order - 1 })
+          .eq('id', sibling.id)
+      )
+      await Promise.all(updates)
+    }
   }
 }
 

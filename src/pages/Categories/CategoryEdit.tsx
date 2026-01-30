@@ -24,11 +24,12 @@ export function CategoryEditPage() {
         name: values.name,
         sort_order: values.sort_order,
         is_active: values.is_active,
+        icon_url: values.icon_url,
       }),
-    onSuccess: () => {
+    onSuccess: async () => {
       message.success('카테고리가 수정되었습니다.')
-      queryClient.invalidateQueries({ queryKey: ['categories'] })
-      queryClient.invalidateQueries({ queryKey: ['category', id] })
+      await queryClient.invalidateQueries({ queryKey: ['categories'] })
+      await queryClient.invalidateQueries({ queryKey: ['category'] }) // 모든 개별 카테고리 캐시
       navigate(`/categories/${id}`)
     },
     onError: (error: Error) => {

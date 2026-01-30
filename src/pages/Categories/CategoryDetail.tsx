@@ -9,6 +9,17 @@ import { getCategoryWithParent, getChildCategories, deleteCategory, updateCatego
 import { CATEGORY_DEPTH_LABEL, CATEGORY_DEPTH_COLOR, DATE_FORMAT, DATETIME_FORMAT } from '@/constants'
 import type { Category } from '@/types'
 
+const USER_SITE_URL = import.meta.env.VITE_USER_SITE_URL || 'https://withdamda.kr'
+
+// 아이콘 URL 변환 (상대경로인 경우 사용자 사이트 URL 추가)
+function resolveIconUrl(iconUrl: string | null): string | null {
+  if (!iconUrl) return null
+  if (iconUrl.startsWith('/')) {
+    return `${USER_SITE_URL}${iconUrl}`
+  }
+  return iconUrl
+}
+
 export function CategoryDetailPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
@@ -28,9 +39,17 @@ export function CategoryDetailPage() {
 
   const deleteMutation = useMutation({
     mutationFn: deleteCategory,
-    onSuccess: () => {
+    onSuccess: async () => {
       message.success('카테고리가 삭제되었습니다.')
-      navigate('/categories')
+      // 모든 카테고리 관련 캐시 무효화 (형제 카테고리 sort_order 변경 반영)
+      await queryClient.invalidateQueries({ queryKey: ['categories'] })
+      await queryClient.invalidateQueries({ queryKey: ['category'] }) // 모든 개별 카테고리 캐시
+      // 상위 카테고리가 있으면 상위 카테고리 상세 페이지로, 없으면 목록으로
+      if (category?.parent?.id) {
+        navigate(`/categories/${category.parent.id}`)
+      } else {
+        navigate('/categories')
+      }
     },
     onError: (error: Error) => {
       message.error(error.message)
@@ -39,10 +58,10 @@ export function CategoryDetailPage() {
 
   const statusMutation = useMutation({
     mutationFn: (isActive: boolean) => updateCategoryStatus(id!, isActive),
-    onSuccess: () => {
+    onSuccess: async () => {
       message.success('상태가 변경되었습니다.')
-      queryClient.invalidateQueries({ queryKey: ['category', id] })
-      queryClient.invalidateQueries({ queryKey: ['categories'] })
+      await queryClient.invalidateQueries({ queryKey: ['categories'] })
+      await queryClient.invalidateQueries({ queryKey: ['category'] })
     },
     onError: (error: Error) => {
       message.error(error.message)
@@ -145,6 +164,32 @@ export function CategoryDetailPage() {
             {CATEGORY_DEPTH_LABEL[category.depth]}
           </Tag>
         </Descriptions.Item>
+        {category.depth === 1 && (
+          <Descriptions.Item label="아이콘" span={2}>
+            {category.icon_url ? (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <div style={{
+                  width: 40,
+                  height: 40,
+                  borderRadius: 6,
+                  background: '#f5f5f5',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}>
+                  <img
+                    src={resolveIconUrl(category.icon_url)!}
+                    alt={category.name}
+                    style={{ maxWidth: 28, maxHeight: 28, objectFit: 'contain' }}
+                  />
+                </div>
+                <span style={{ color: '#666', fontSize: 12 }}>{category.icon_url}</span>
+              </div>
+            ) : (
+              <span style={{ color: '#999' }}>아이콘 없음</span>
+            )}
+          </Descriptions.Item>
+        )}
         <Descriptions.Item label="상위 카테고리">
           {category.parent ? (
             <a onClick={() => navigate(`/categories/${category.parent!.id}`)}>
