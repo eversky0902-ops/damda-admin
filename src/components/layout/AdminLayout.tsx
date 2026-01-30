@@ -71,6 +71,7 @@ const menuItems: MenuProps['items'] = [
       { key: '/content/banners', label: '배너 관리' },
       { key: '/content/popups', label: '팝업 관리' },
       { key: '/content/inquiries', label: '1:1 문의' },
+      { key: '/content/legal-documents', label: '약관/정책 관리' },
     ],
   },
   {
@@ -84,6 +85,34 @@ const menuItems: MenuProps['items'] = [
   },
 ]
 
+// 현재 경로에 맞는 메뉴 키 찾기
+function getSelectedMenuKey(pathname: string): string {
+  // 정확히 일치하는 경우
+  const exactMatch = menuItems?.find(item => item && 'key' in item && item.key === pathname)
+  if (exactMatch) return pathname
+
+  // 하위 메뉴 확인
+  for (const item of menuItems || []) {
+    if (item && 'children' in item && item.children) {
+      const childMatch = item.children.find(child => child && 'key' in child && child.key === pathname)
+      if (childMatch && 'key' in childMatch) return childMatch.key as string
+      // 하위 메뉴의 하위 경로 확인
+      const childPrefixMatch = item.children.find(child =>
+        child && 'key' in child && pathname.startsWith(child.key as string + '/')
+      )
+      if (childPrefixMatch && 'key' in childPrefixMatch) return childPrefixMatch.key as string
+    }
+  }
+
+  // 상위 메뉴 prefix 매칭 (예: /members/123 → /members)
+  const prefixMatch = menuItems?.find(item =>
+    item && 'key' in item && typeof item.key === 'string' && pathname.startsWith(item.key + '/')
+  )
+  if (prefixMatch && 'key' in prefixMatch) return prefixMatch.key as string
+
+  return pathname
+}
+
 export function AdminLayout() {
   const navigate = useNavigate()
   const location = useLocation()
@@ -92,6 +121,9 @@ export function AdminLayout() {
   const {
     token: { borderRadiusLG },
   } = theme.useToken()
+
+  // 현재 경로에 맞는 선택된 메뉴 키
+  const selectedKey = getSelectedMenuKey(location.pathname)
 
   // 인증 가드
   useEffect(() => {
@@ -176,7 +208,7 @@ export function AdminLayout() {
             <Menu
               mode="inline"
               theme="dark"
-              selectedKeys={[location.pathname]}
+              selectedKeys={[selectedKey]}
               defaultOpenKeys={['/content']}
               items={menuItems}
               onClick={handleMenuClick}

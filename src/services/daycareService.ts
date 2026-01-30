@@ -99,7 +99,10 @@ export async function getDaycare(id: string): Promise<Daycare> {
 export async function updateDaycareStatus(
   id: string,
   status: Daycare['status'],
-  rejectionReason?: string
+  options?: {
+    rejectionReason?: string
+    revisionReason?: string
+  }
 ): Promise<void> {
   const updateData: Record<string, unknown> = {
     status,
@@ -109,9 +112,19 @@ export async function updateDaycareStatus(
   if (status === 'approved') {
     updateData.approved_at = new Date().toISOString()
     updateData.rejection_reason = null
+    updateData.revision_reason = null
   } else if (status === 'rejected') {
-    updateData.rejection_reason = rejectionReason || null
+    updateData.rejection_reason = options?.rejectionReason || null
     updateData.approved_at = null
+    updateData.revision_reason = null
+  } else if (status === 'revision_required') {
+    updateData.revision_reason = options?.revisionReason || null
+    updateData.revision_requested_at = new Date().toISOString()
+    updateData.revision_response = null
+    updateData.revision_file = null
+    updateData.revision_submitted_at = null
+    updateData.approved_at = null
+    updateData.rejection_reason = null
   }
 
   const { error } = await supabase
