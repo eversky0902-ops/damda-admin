@@ -1,6 +1,6 @@
 import { useNavigate } from 'react-router-dom'
 import { Typography, message } from 'antd'
-import { useMutation } from '@tanstack/react-query'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
 
 import { createVendor } from '@/services/vendorService'
 import { VendorForm } from '@/components/VendorForm'
@@ -10,10 +10,12 @@ const { Text } = Typography
 
 export function VendorCreatePage() {
   const navigate = useNavigate()
+  const queryClient = useQueryClient()
 
   const createMutation = useMutation({
     mutationFn: createVendor,
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['vendors'] })
       message.success('사업주가 등록되었습니다')
       navigate('/vendors')
     },
