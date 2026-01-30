@@ -44,6 +44,7 @@ export function CategoryCreatePage() {
       sort_order: values.sort_order,
       is_active: values.is_active,
       icon_url: values.icon_url,
+      banner_url: values.banner_url,
     })
   }
 
