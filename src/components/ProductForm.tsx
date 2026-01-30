@@ -1282,6 +1282,12 @@ export function ProductForm({
             .product-description-editor .ql-editor {
               min-height: 300px;
             }
+            .product-description-editor .ql-editor img {
+              max-width: 600px;
+              width: 100%;
+              height: auto;
+              border-radius: 8px;
+            }
           `}</style>
         </Card>
 
