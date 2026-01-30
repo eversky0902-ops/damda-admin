@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase'
+import { logCreate, logUpdate, logDelete } from '@/services/adminLogService'
 import type {
   Product,
   ProductCreateInput,
@@ -197,12 +198,22 @@ export async function createProduct(input: ProductCreateInput): Promise<Product>
     }
   }
 
+  // 활동 로그 기록
+  await logCreate('product', product.id, product as Record<string, unknown>)
+
   return product as Product
 }
 
 // 상품 수정
 export async function updateProduct(id: string, input: ProductUpdateInput): Promise<Product> {
   const { options, images, available_time_slots, unavailable_dates, ...productData } = input
+
+  // 변경 전 데이터 조회
+  const { data: beforeData } = await supabase
+    .from('products')
+    .select('*')
+    .eq('id', id)
+    .single()
 
   // 상품 업데이트
   const { data: product, error: productError } = await supabase
@@ -282,11 +293,26 @@ export async function updateProduct(id: string, input: ProductUpdateInput): Prom
     }
   }
 
+  // 활동 로그 기록
+  await logUpdate(
+    'product',
+    id,
+    beforeData as Record<string, unknown>,
+    product as Record<string, unknown>
+  )
+
   return product as Product
 }
 
 // 상품 삭제
 export async function deleteProduct(id: string): Promise<void> {
+  // 삭제 전 데이터 조회
+  const { data: beforeData } = await supabase
+    .from('products')
+    .select('*')
+    .eq('id', id)
+    .single()
+
   // 관련 데이터 먼저 삭제
   await supabase.from('product_images').delete().eq('product_id', id)
   await supabase.from('product_options').delete().eq('product_id', id)
@@ -297,6 +323,9 @@ export async function deleteProduct(id: string): Promise<void> {
   if (error) {
     throw new Error(error.message)
   }
+
+  // 활동 로그 기록
+  await logDelete('product', id, beforeData as Record<string, unknown>)
 }
 
 // 상품 노출 상태 변경

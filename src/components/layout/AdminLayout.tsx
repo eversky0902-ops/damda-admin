@@ -16,6 +16,7 @@ import {
 } from '@ant-design/icons'
 import { useUIStore } from '@/stores/uiStore'
 import { useAuthStore } from '@/stores/authStore'
+import { logLogout } from '@/services/adminLogService'
 
 const { Sider, Content } = Layout
 
@@ -155,8 +156,10 @@ export function AdminLayout() {
     },
   ]
 
-  const handleUserMenuClick: MenuProps['onClick'] = ({ key }) => {
+  const handleUserMenuClick: MenuProps['onClick'] = async ({ key }) => {
     if (key === 'logout') {
+      // 로그아웃 활동 로그 기록 (로그아웃 전에 기록해야 adminId를 가져올 수 있음)
+      await logLogout()
       logout()
       navigate('/login')
     }

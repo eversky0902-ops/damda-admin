@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase'
+import { logCreate, logUpdate, logStatusChange } from '@/services/adminLogService'
 import type { Daycare, DaycareFilter, DaycareMemo, DaycareCreateInput, DaycareUpdateInput, PaginatedResponse } from '@/types'
 
 interface GetDaycaresParams {
@@ -77,6 +78,9 @@ export async function createDaycare(input: DaycareCreateInput): Promise<Daycare>
     throw new Error(error.message)
   }
 
+  // 활동 로그 기록
+  await logCreate('daycare', data.id, data as Record<string, unknown>)
+
   return data as Daycare
 }
 
@@ -104,6 +108,13 @@ export async function updateDaycareStatus(
     revisionReason?: string
   }
 ): Promise<void> {
+  // 변경 전 데이터 조회
+  const { data: beforeData } = await supabase
+    .from('daycares')
+    .select('*')
+    .eq('id', id)
+    .single()
+
   const updateData: Record<string, unknown> = {
     status,
     updated_at: new Date().toISOString(),
@@ -127,14 +138,24 @@ export async function updateDaycareStatus(
     updateData.rejection_reason = null
   }
 
-  const { error } = await supabase
+  const { data: afterData, error } = await supabase
     .from('daycares')
     .update(updateData)
     .eq('id', id)
+    .select()
+    .single()
 
   if (error) {
     throw new Error(error.message)
   }
+
+  // 활동 로그 기록
+  await logStatusChange(
+    'daycare',
+    id,
+    beforeData as Record<string, unknown>,
+    afterData as Record<string, unknown>
+  )
 }
 
 // 어린이집 정보 수정
@@ -142,17 +163,34 @@ export async function updateDaycare(
   id: string,
   input: DaycareUpdateInput
 ): Promise<void> {
-  const { error } = await supabase
+  // 변경 전 데이터 조회
+  const { data: beforeData } = await supabase
+    .from('daycares')
+    .select('*')
+    .eq('id', id)
+    .single()
+
+  const { data: afterData, error } = await supabase
     .from('daycares')
     .update({
       ...input,
       updated_at: new Date().toISOString(),
     })
     .eq('id', id)
+    .select()
+    .single()
 
   if (error) {
     throw new Error(error.message)
   }
+
+  // 활동 로그 기록
+  await logUpdate(
+    'daycare',
+    id,
+    beforeData as Record<string, unknown>,
+    afterData as Record<string, unknown>
+  )
 }
 
 // 어린이집 메모 목록 조회

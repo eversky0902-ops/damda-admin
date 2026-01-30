@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase'
+import { logCreate, logUpdate } from '@/services/adminLogService'
 import type {
   BusinessOwner,
   BusinessOwnerCreateInput,
@@ -90,6 +91,9 @@ export async function createVendor(input: BusinessOwnerCreateInput): Promise<Bus
     throw new Error(error.message)
   }
 
+  // 활동 로그 기록
+  await logCreate('business_owner', data.id, data as Record<string, unknown>)
+
   return data as BusinessOwner
 }
 
@@ -98,6 +102,13 @@ export async function updateVendor(
   id: string,
   input: BusinessOwnerUpdateInput
 ): Promise<BusinessOwner> {
+  // 변경 전 데이터 조회
+  const { data: beforeData } = await supabase
+    .from('business_owners')
+    .select('*')
+    .eq('id', id)
+    .single()
+
   const { data, error } = await supabase
     .from('business_owners')
     .update({
@@ -111,6 +122,14 @@ export async function updateVendor(
   if (error) {
     throw new Error(error.message)
   }
+
+  // 활동 로그 기록
+  await logUpdate(
+    'business_owner',
+    id,
+    beforeData as Record<string, unknown>,
+    data as Record<string, unknown>
+  )
 
   return data as BusinessOwner
 }
@@ -207,6 +226,14 @@ export async function updateCommissionRate(
   if (updateError) {
     throw new Error(updateError.message)
   }
+
+  // 활동 로그 기록
+  await logUpdate(
+    'business_owner',
+    vendorId,
+    { commission_rate: previousRate },
+    { commission_rate: newRate, reason }
+  )
 }
 
 // 전체 사업주 목록 조회 (엑셀 다운로드용)

@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase'
+import { logUpdate } from '@/services/adminLogService'
 import type {
   Inquiry,
   InquiryAnswerInput,
@@ -80,6 +81,13 @@ export async function answerInquiry(
   input: InquiryAnswerInput,
   adminId: string
 ): Promise<Inquiry> {
+  // 변경 전 데이터 조회
+  const { data: beforeData } = await supabase
+    .from('inquiries')
+    .select('*')
+    .eq('id', id)
+    .single()
+
   const { data, error } = await supabase
     .from('inquiries')
     .update({
@@ -96,6 +104,14 @@ export async function answerInquiry(
     throw new Error(error.message)
   }
 
+  // 활동 로그 기록
+  await logUpdate(
+    'inquiry',
+    id,
+    beforeData as Record<string, unknown>,
+    data as Record<string, unknown>
+  )
+
   return data as Inquiry
 }
 
@@ -105,6 +121,13 @@ export async function updateInquiryAnswer(
   input: InquiryAnswerInput,
   adminId: string
 ): Promise<Inquiry> {
+  // 변경 전 데이터 조회
+  const { data: beforeData } = await supabase
+    .from('inquiries')
+    .select('*')
+    .eq('id', id)
+    .single()
+
   const { data, error } = await supabase
     .from('inquiries')
     .update({
@@ -119,6 +142,14 @@ export async function updateInquiryAnswer(
   if (error) {
     throw new Error(error.message)
   }
+
+  // 활동 로그 기록
+  await logUpdate(
+    'inquiry',
+    id,
+    beforeData as Record<string, unknown>,
+    data as Record<string, unknown>
+  )
 
   return data as Inquiry
 }

@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase'
+import { logUpdate, logDelete } from '@/services/adminLogService'
 import type { Review, ReviewFilter, PaginationParams } from '@/types'
 
 // 리뷰 목록 조회
@@ -83,6 +84,13 @@ export async function updateReviewVisibility(
   id: string,
   isVisible: boolean
 ): Promise<Review> {
+  // 변경 전 데이터 조회
+  const { data: beforeData } = await supabase
+    .from('reviews')
+    .select('*')
+    .eq('id', id)
+    .single()
+
   const { data, error } = await supabase
     .from('reviews')
     .update({
@@ -97,6 +105,14 @@ export async function updateReviewVisibility(
     throw new Error(error.message)
   }
 
+  // 활동 로그 기록
+  await logUpdate(
+    'review',
+    id,
+    beforeData as Record<string, unknown>,
+    data as Record<string, unknown>
+  )
+
   return data as Review
 }
 
@@ -105,6 +121,13 @@ export async function updateReviewFeatured(
   id: string,
   isFeatured: boolean
 ): Promise<Review> {
+  // 변경 전 데이터 조회
+  const { data: beforeData } = await supabase
+    .from('reviews')
+    .select('*')
+    .eq('id', id)
+    .single()
+
   const { data, error } = await supabase
     .from('reviews')
     .update({
@@ -119,11 +142,26 @@ export async function updateReviewFeatured(
     throw new Error(error.message)
   }
 
+  // 활동 로그 기록
+  await logUpdate(
+    'review',
+    id,
+    beforeData as Record<string, unknown>,
+    data as Record<string, unknown>
+  )
+
   return data as Review
 }
 
 // 리뷰 삭제
 export async function deleteReview(id: string): Promise<void> {
+  // 삭제 전 데이터 조회
+  const { data: beforeData } = await supabase
+    .from('reviews')
+    .select('*')
+    .eq('id', id)
+    .single()
+
   // 먼저 리뷰 이미지 삭제
   const { error: imageError } = await supabase
     .from('review_images')
@@ -140,6 +178,9 @@ export async function deleteReview(id: string): Promise<void> {
   if (error) {
     throw new Error(error.message)
   }
+
+  // 활동 로그 기록
+  await logDelete('review', id, beforeData as Record<string, unknown>)
 }
 
 // 리뷰 통계 조회

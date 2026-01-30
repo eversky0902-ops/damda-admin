@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase'
+import { useAuthStore } from '@/stores/authStore'
 import type {
   AdminLog,
   AdminLogFilter,
@@ -7,6 +8,11 @@ import type {
   PaginationParams,
   Admin,
 } from '@/types'
+
+// 현재 로그인한 관리자 ID 가져오기
+export function getCurrentAdminId(): string | null {
+  return useAuthStore.getState().admin?.id || null
+}
 
 // 활동 로그 목록 조회
 export async function getAdminLogs(
@@ -168,4 +174,105 @@ export const TARGET_TYPE_LABELS: Record<AdminLogTargetType, string> = {
   popup: '팝업',
   inquiry: '1:1 문의',
   site_settings: '사이트 설정',
+}
+
+// ===== 편의 함수: 서비스에서 쉽게 로그 기록 =====
+
+// 생성 로그 기록
+export async function logCreate(
+  targetType: AdminLogTargetType,
+  targetId: string,
+  afterData?: Record<string, unknown> | null
+): Promise<void> {
+  const adminId = getCurrentAdminId()
+  if (!adminId) return
+
+  await createAdminLog({
+    adminId,
+    action: 'create',
+    targetType,
+    targetId,
+    afterData,
+  })
+}
+
+// 수정 로그 기록
+export async function logUpdate(
+  targetType: AdminLogTargetType,
+  targetId: string,
+  beforeData?: Record<string, unknown> | null,
+  afterData?: Record<string, unknown> | null
+): Promise<void> {
+  const adminId = getCurrentAdminId()
+  if (!adminId) return
+
+  await createAdminLog({
+    adminId,
+    action: 'update',
+    targetType,
+    targetId,
+    beforeData,
+    afterData,
+  })
+}
+
+// 삭제 로그 기록
+export async function logDelete(
+  targetType: AdminLogTargetType,
+  targetId: string,
+  beforeData?: Record<string, unknown> | null
+): Promise<void> {
+  const adminId = getCurrentAdminId()
+  if (!adminId) return
+
+  await createAdminLog({
+    adminId,
+    action: 'delete',
+    targetType,
+    targetId,
+    beforeData,
+  })
+}
+
+// 상태 변경 로그 기록
+export async function logStatusChange(
+  targetType: AdminLogTargetType,
+  targetId: string,
+  beforeData?: Record<string, unknown> | null,
+  afterData?: Record<string, unknown> | null
+): Promise<void> {
+  const adminId = getCurrentAdminId()
+  if (!adminId) return
+
+  await createAdminLog({
+    adminId,
+    action: 'status_change',
+    targetType,
+    targetId,
+    beforeData,
+    afterData,
+  })
+}
+
+// 로그인 로그 기록
+export async function logLogin(adminId: string): Promise<void> {
+  await createAdminLog({
+    adminId,
+    action: 'login',
+    targetType: 'site_settings',
+    targetId: adminId,
+  })
+}
+
+// 로그아웃 로그 기록
+export async function logLogout(): Promise<void> {
+  const adminId = getCurrentAdminId()
+  if (!adminId) return
+
+  await createAdminLog({
+    adminId,
+    action: 'logout',
+    targetType: 'site_settings',
+    targetId: adminId,
+  })
 }

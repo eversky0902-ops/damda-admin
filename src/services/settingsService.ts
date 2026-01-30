@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase'
+import { logUpdate } from '@/services/adminLogService'
 import type { SiteSetting } from '@/types'
 
 // 모든 설정 조회
@@ -39,6 +40,13 @@ export async function updateSetting(
   value: unknown,
   adminId: string
 ): Promise<SiteSetting> {
+  // 변경 전 데이터 조회
+  const { data: beforeData } = await supabase
+    .from('site_settings')
+    .select('*')
+    .eq('key', key)
+    .single()
+
   const { data, error } = await supabase
     .from('site_settings')
     .update({
@@ -53,6 +61,14 @@ export async function updateSetting(
   if (error) {
     throw new Error(error.message)
   }
+
+  // 활동 로그 기록
+  await logUpdate(
+    'site_settings',
+    key,
+    beforeData as Record<string, unknown>,
+    data as Record<string, unknown>
+  )
 
   return data as SiteSetting
 }

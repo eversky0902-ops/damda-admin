@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { Card, Form, Input, Button, message } from 'antd'
 import { UserOutlined, LockOutlined } from '@ant-design/icons'
 import { login } from '@/services/authService'
+import { logLogin } from '@/services/adminLogService'
 import { useAuthStore } from '@/stores/authStore'
 import { supabase } from '@/lib/supabase'
 
@@ -39,6 +40,10 @@ export function LoginPage() {
       }
 
       setAuth(result.data.admin, result.data.session)
+
+      // 로그인 활동 로그 기록
+      await logLogin(result.data.admin.id)
+
       message.success(`${result.data.admin.name}님, 환영합니다!`)
       navigate('/dashboard')
     } catch (err) {

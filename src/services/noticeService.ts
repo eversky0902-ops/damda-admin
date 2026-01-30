@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase'
+import { logCreate, logUpdate, logDelete } from '@/services/adminLogService'
 import type {
   Notice,
   NoticeCreateInput,
@@ -94,6 +95,9 @@ export async function createNotice(
     throw new Error(error.message)
   }
 
+  // 활동 로그 기록
+  await logCreate('notice', data.id, data as Record<string, unknown>)
+
   return data as Notice
 }
 
@@ -102,6 +106,13 @@ export async function updateNotice(
   id: string,
   input: NoticeUpdateInput
 ): Promise<Notice> {
+  // 변경 전 데이터 조회
+  const { data: beforeData } = await supabase
+    .from('notices')
+    .select('*')
+    .eq('id', id)
+    .single()
+
   const { data, error } = await supabase
     .from('notices')
     .update({
@@ -116,11 +127,26 @@ export async function updateNotice(
     throw new Error(error.message)
   }
 
+  // 활동 로그 기록
+  await logUpdate(
+    'notice',
+    id,
+    beforeData as Record<string, unknown>,
+    data as Record<string, unknown>
+  )
+
   return data as Notice
 }
 
 // 공지사항 삭제
 export async function deleteNotice(id: string): Promise<void> {
+  // 삭제 전 데이터 조회
+  const { data: beforeData } = await supabase
+    .from('notices')
+    .select('*')
+    .eq('id', id)
+    .single()
+
   const { error } = await supabase
     .from('notices')
     .delete()
@@ -129,6 +155,9 @@ export async function deleteNotice(id: string): Promise<void> {
   if (error) {
     throw new Error(error.message)
   }
+
+  // 활동 로그 기록
+  await logDelete('notice', id, beforeData as Record<string, unknown>)
 }
 
 // 공지사항 공개/비공개 토글

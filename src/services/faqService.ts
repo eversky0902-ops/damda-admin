@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase'
+import { logCreate, logUpdate, logDelete } from '@/services/adminLogService'
 import type {
   FAQ,
   FAQCreateInput,
@@ -85,6 +86,9 @@ export async function createFAQ(input: FAQCreateInput): Promise<FAQ> {
     throw new Error(error.message)
   }
 
+  // 활동 로그 기록
+  await logCreate('faq', data.id, data as Record<string, unknown>)
+
   return data as FAQ
 }
 
@@ -93,6 +97,13 @@ export async function updateFAQ(
   id: string,
   input: FAQUpdateInput
 ): Promise<FAQ> {
+  // 변경 전 데이터 조회
+  const { data: beforeData } = await supabase
+    .from('faqs')
+    .select('*')
+    .eq('id', id)
+    .single()
+
   const { data, error } = await supabase
     .from('faqs')
     .update({
@@ -107,11 +118,26 @@ export async function updateFAQ(
     throw new Error(error.message)
   }
 
+  // 활동 로그 기록
+  await logUpdate(
+    'faq',
+    id,
+    beforeData as Record<string, unknown>,
+    data as Record<string, unknown>
+  )
+
   return data as FAQ
 }
 
 // FAQ 삭제
 export async function deleteFAQ(id: string): Promise<void> {
+  // 삭제 전 데이터 조회
+  const { data: beforeData } = await supabase
+    .from('faqs')
+    .select('*')
+    .eq('id', id)
+    .single()
+
   const { error } = await supabase
     .from('faqs')
     .delete()
@@ -120,6 +146,9 @@ export async function deleteFAQ(id: string): Promise<void> {
   if (error) {
     throw new Error(error.message)
   }
+
+  // 활동 로그 기록
+  await logDelete('faq', id, beforeData as Record<string, unknown>)
 }
 
 // FAQ 공개/비공개 토글

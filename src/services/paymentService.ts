@@ -166,7 +166,7 @@ export async function updatePaymentStatus(
   return data as Payment
 }
 
-// 환불 처리
+// 환불 처리 (나이스페이 PG 환불 API 호출 포함)
 export async function processRefund(
   paymentId: string,
   reservationId: string,
@@ -175,59 +175,27 @@ export async function processRefund(
   adminMemo: string,
   adminId: string
 ): Promise<Refund> {
-  // 결제 정보 조회
-  const { data: payment, error: paymentError } = await supabase
-    .from('payments')
-    .select('amount')
-    .eq('id', paymentId)
-    .single()
-
-  if (paymentError) {
-    throw new Error(paymentError.message)
-  }
-
-  // 환불 내역 추가
-  const { data: refund, error: refundError } = await supabase
-    .from('refunds')
-    .insert({
-      payment_id: paymentId,
-      reservation_id: reservationId,
-      original_amount: payment.amount,
-      refund_amount: refundAmount,
+  // Edge Function 호출하여 PG 환불 처리
+  const { data, error } = await supabase.functions.invoke('process-refund', {
+    body: {
+      paymentId,
+      reservationId,
+      refundAmount,
       reason,
-      admin_memo: adminMemo,
-      status: 'completed' as RefundStatusType,
-      refunded_at: new Date().toISOString(),
-      processed_by: adminId,
-    })
-    .select()
-    .single()
+      adminMemo,
+      adminId,
+    },
+  })
 
-  if (refundError) {
-    throw new Error(refundError.message)
+  if (error) {
+    throw new Error(error.message || '환불 처리 중 오류가 발생했습니다.')
   }
 
-  // 결제 상태 변경
-  await supabase
-    .from('payments')
-    .update({
-      status: 'cancelled',
-      updated_at: new Date().toISOString(),
-    })
-    .eq('id', paymentId)
+  if (!data.success) {
+    throw new Error(data.error || '환불 처리에 실패했습니다.')
+  }
 
-  // 예약 상태 변경
-  await supabase
-    .from('reservations')
-    .update({
-      status: 'refunded',
-      cancel_reason: reason,
-      cancelled_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    })
-    .eq('id', reservationId)
-
-  return refund as Refund
+  return data.refund as Refund
 }
 
 // 결제 통계 조회

@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase'
+import { logCreate, logUpdate, logDelete } from '@/services/adminLogService'
 import type {
   Popup,
   PopupCreateInput,
@@ -98,6 +99,9 @@ export async function createPopup(input: PopupCreateInput): Promise<Popup> {
     throw new Error(error.message)
   }
 
+  // 활동 로그 기록
+  await logCreate('popup', data.id, data as Record<string, unknown>)
+
   return data as Popup
 }
 
@@ -106,6 +110,13 @@ export async function updatePopup(
   id: string,
   input: PopupUpdateInput
 ): Promise<Popup> {
+  // 변경 전 데이터 조회
+  const { data: beforeData } = await supabase
+    .from('popups')
+    .select('*')
+    .eq('id', id)
+    .single()
+
   const { data, error } = await supabase
     .from('popups')
     .update({
@@ -120,11 +131,26 @@ export async function updatePopup(
     throw new Error(error.message)
   }
 
+  // 활동 로그 기록
+  await logUpdate(
+    'popup',
+    id,
+    beforeData as Record<string, unknown>,
+    data as Record<string, unknown>
+  )
+
   return data as Popup
 }
 
 // 팝업 삭제
 export async function deletePopup(id: string): Promise<void> {
+  // 삭제 전 데이터 조회
+  const { data: beforeData } = await supabase
+    .from('popups')
+    .select('*')
+    .eq('id', id)
+    .single()
+
   const { error } = await supabase
     .from('popups')
     .delete()
@@ -133,6 +159,9 @@ export async function deletePopup(id: string): Promise<void> {
   if (error) {
     throw new Error(error.message)
   }
+
+  // 활동 로그 기록
+  await logDelete('popup', id, beforeData as Record<string, unknown>)
 }
 
 // 팝업 공개/비공개 토글

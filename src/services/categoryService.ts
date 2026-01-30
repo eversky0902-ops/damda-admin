@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase'
+import { logCreate, logUpdate, logDelete } from '@/services/adminLogService'
 import type {
   Category,
   CategoryCreateInput,
@@ -199,6 +200,9 @@ export async function createCategory(input: CategoryCreateInput): Promise<Catego
     throw new Error(error.message)
   }
 
+  // 활동 로그 기록
+  await logCreate('category', data.id, data as Record<string, unknown>)
+
   return data as Category
 }
 
@@ -207,6 +211,13 @@ export async function updateCategory(
   id: string,
   input: CategoryUpdateInput
 ): Promise<Category> {
+  // 변경 전 데이터 조회
+  const { data: beforeData } = await supabase
+    .from('categories')
+    .select('*')
+    .eq('id', id)
+    .single()
+
   const { data, error } = await supabase
     .from('categories')
     .update({
@@ -221,6 +232,14 @@ export async function updateCategory(
     throw new Error(error.message)
   }
 
+  // 활동 로그 기록
+  await logUpdate(
+    'category',
+    id,
+    beforeData as Record<string, unknown>,
+    data as Record<string, unknown>
+  )
+
   return data as Category
 }
 
@@ -229,7 +248,7 @@ export async function deleteCategory(id: string): Promise<void> {
   // 삭제할 카테고리 정보 조회 (parent_id, sort_order 필요)
   const { data: categoryToDelete } = await supabase
     .from('categories')
-    .select('parent_id, sort_order')
+    .select('*')
     .eq('id', id)
     .single()
 
@@ -261,6 +280,9 @@ export async function deleteCategory(id: string): Promise<void> {
   if (error) {
     throw new Error(error.message)
   }
+
+  // 활동 로그 기록
+  await logDelete('category', id, categoryToDelete as Record<string, unknown>)
 
   // 삭제 후 형제 카테고리들의 sort_order 재정렬
   if (categoryToDelete) {
