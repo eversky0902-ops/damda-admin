@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase'
+import { logCreate, logUpdate, logStatusChange } from '@/services/adminLogService'
 import type {
   Reservation,
   ReservationStatusType,
@@ -95,6 +96,13 @@ export async function updateReservationStatus(
   status: ReservationStatusType,
   cancelReason?: string
 ): Promise<Reservation> {
+  // 변경 전 데이터 조회
+  const { data: beforeData } = await supabase
+    .from('reservations')
+    .select('*')
+    .eq('id', id)
+    .single()
+
   const updateData: Record<string, unknown> = {
     status,
     updated_at: new Date().toISOString(),
@@ -116,6 +124,14 @@ export async function updateReservationStatus(
     throw new Error(error.message)
   }
 
+  // 활동 로그 기록
+  await logStatusChange(
+    'reservation',
+    id,
+    beforeData as Record<string, unknown>,
+    data as Record<string, unknown>
+  )
+
   return data as Reservation
 }
 
@@ -124,6 +140,13 @@ export async function updateReservationMemo(
   id: string,
   memo: string
 ): Promise<Reservation> {
+  // 변경 전 데이터 조회
+  const { data: beforeData } = await supabase
+    .from('reservations')
+    .select('*')
+    .eq('id', id)
+    .single()
+
   const { data, error } = await supabase
     .from('reservations')
     .update({
@@ -137,6 +160,14 @@ export async function updateReservationMemo(
   if (error) {
     throw new Error(error.message)
   }
+
+  // 활동 로그 기록
+  await logUpdate(
+    'reservation',
+    id,
+    beforeData as Record<string, unknown>,
+    data as Record<string, unknown>
+  )
 
   return data as Reservation
 }
@@ -215,7 +246,10 @@ export async function processRefund(
     throw new Error(refundError.message)
   }
 
-  // 예약 상태 변경
+  // 활동 로그 기록 (환불)
+  await logCreate('refund', refund.id, refund as Record<string, unknown>)
+
+  // 예약 상태 변경 (이 함수 내부에서 로그가 기록됨)
   await updateReservationStatus(reservationId, 'refunded', reason)
 
   return refund as Refund

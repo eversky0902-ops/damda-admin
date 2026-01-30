@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase'
+import { logCreate, logStatusChange } from '@/services/adminLogService'
 import type {
   Payment,
   PaymentStatusType,
@@ -143,6 +144,13 @@ export async function updatePaymentStatus(
   id: string,
   status: PaymentStatusType
 ): Promise<Payment> {
+  // 변경 전 데이터 조회
+  const { data: beforeData } = await supabase
+    .from('payments')
+    .select('*')
+    .eq('id', id)
+    .single()
+
   const updateData: Record<string, unknown> = {
     status,
     updated_at: new Date().toISOString(),
@@ -162,6 +170,14 @@ export async function updatePaymentStatus(
   if (error) {
     throw new Error(error.message)
   }
+
+  // 활동 로그 기록
+  await logStatusChange(
+    'payment',
+    id,
+    beforeData as Record<string, unknown>,
+    data as Record<string, unknown>
+  )
 
   return data as Payment
 }
@@ -194,6 +210,9 @@ export async function processRefund(
   if (!data.success) {
     throw new Error(data.error || '환불 처리에 실패했습니다.')
   }
+
+  // 활동 로그 기록
+  await logCreate('refund', data.refund.id, data.refund as Record<string, unknown>)
 
   return data.refund as Refund
 }

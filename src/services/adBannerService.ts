@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase'
+import { logCreate, logUpdate, logDelete } from '@/services/adminLogService'
 import type {
   AdBanner,
   AdBannerCreateInput,
@@ -78,6 +79,9 @@ export async function createAdBanner(input: AdBannerCreateInput): Promise<AdBann
     throw new Error(error.message)
   }
 
+  // 활동 로그 기록
+  await logCreate('ad_banner', data.id, data as Record<string, unknown>)
+
   return data as AdBanner
 }
 
@@ -86,6 +90,13 @@ export async function updateAdBanner(
   id: string,
   input: AdBannerUpdateInput
 ): Promise<AdBanner> {
+  // 변경 전 데이터 조회
+  const { data: beforeData } = await supabase
+    .from('ad_banners')
+    .select('*')
+    .eq('id', id)
+    .single()
+
   const { data, error } = await supabase
     .from('ad_banners')
     .update({
@@ -100,11 +111,26 @@ export async function updateAdBanner(
     throw new Error(error.message)
   }
 
+  // 활동 로그 기록
+  await logUpdate(
+    'ad_banner',
+    id,
+    beforeData as Record<string, unknown>,
+    data as Record<string, unknown>
+  )
+
   return data as AdBanner
 }
 
 // 광고 배너 삭제
 export async function deleteAdBanner(id: string): Promise<void> {
+  // 삭제 전 데이터 조회
+  const { data: beforeData } = await supabase
+    .from('ad_banners')
+    .select('*')
+    .eq('id', id)
+    .single()
+
   const { error } = await supabase
     .from('ad_banners')
     .delete()
@@ -113,6 +139,9 @@ export async function deleteAdBanner(id: string): Promise<void> {
   if (error) {
     throw new Error(error.message)
   }
+
+  // 활동 로그 기록
+  await logDelete('ad_banner', id, beforeData as Record<string, unknown>)
 }
 
 // 광고 배너 공개/비공개 토글
