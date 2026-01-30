@@ -103,16 +103,24 @@ export async function getProduct(id: string): Promise<Product> {
     .eq('product_id', id)
     .order('sort_order', { ascending: true })
 
+  // 휴무일 조회
+  const { data: unavailableDates } = await supabase
+    .from('product_unavailable_dates')
+    .select('*')
+    .eq('product_id', id)
+    .order('unavailable_date', { ascending: true })
+
   return {
     ...data,
     options: options || [],
     images: images || [],
+    unavailable_dates: unavailableDates || [],
   } as Product
 }
 
 // 상품 생성
 export async function createProduct(input: ProductCreateInput): Promise<Product> {
-  const { options, images, available_time_slots, ...productData } = input
+  const { options, images, available_time_slots, unavailable_dates, ...productData } = input
 
   // 상품 생성
   const { data: product, error: productError } = await supabase
@@ -167,12 +175,34 @@ export async function createProduct(input: ProductCreateInput): Promise<Product>
     }
   }
 
+  // 휴무일 생성
+  if (unavailable_dates && unavailable_dates.length > 0) {
+    const unavailableDatesData = unavailable_dates.map((item: { date: string; reason: string }) => ({
+      product_id: product.id,
+      unavailable_date: item.date,
+      reason: item.reason || null,
+      is_recurring: false,
+    }))
+
+    const { error: unavailableDatesError } = await supabase
+      .from('product_unavailable_dates')
+      .insert(unavailableDatesData)
+
+    if (unavailableDatesError) {
+      // 롤백: 상품, 옵션, 이미지 삭제
+      await supabase.from('product_images').delete().eq('product_id', product.id)
+      await supabase.from('product_options').delete().eq('product_id', product.id)
+      await supabase.from('products').delete().eq('id', product.id)
+      throw new Error(unavailableDatesError.message)
+    }
+  }
+
   return product as Product
 }
 
 // 상품 수정
 export async function updateProduct(id: string, input: ProductUpdateInput): Promise<Product> {
-  const { options, images, available_time_slots, ...productData } = input
+  const { options, images, available_time_slots, unavailable_dates, ...productData } = input
 
   // 상품 업데이트
   const { data: product, error: productError } = await supabase
@@ -226,6 +256,28 @@ export async function updateProduct(id: string, input: ProductUpdateInput): Prom
 
       if (imagesError) {
         throw new Error(imagesError.message)
+      }
+    }
+  }
+
+  // 휴무일 업데이트 (기존 삭제 후 재생성)
+  if (unavailable_dates !== undefined) {
+    await supabase.from('product_unavailable_dates').delete().eq('product_id', id)
+
+    if (unavailable_dates && unavailable_dates.length > 0) {
+      const unavailableDatesData = unavailable_dates.map((item: { date: string; reason: string }) => ({
+        product_id: id,
+        unavailable_date: item.date,
+        reason: item.reason || null,
+        is_recurring: false,
+      }))
+
+      const { error: unavailableDatesError } = await supabase
+        .from('product_unavailable_dates')
+        .insert(unavailableDatesData)
+
+      if (unavailableDatesError) {
+        throw new Error(unavailableDatesError.message)
       }
     }
   }

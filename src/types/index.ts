@@ -304,6 +304,7 @@ export interface Product {
   category?: Pick<Category, 'id' | 'name' | 'parent_id'>
   options?: ProductOption[]
   images?: ProductImage[]
+  unavailable_dates?: ProductUnavailableDate[]
 }
 
 // 시간 슬롯 모드 타입
@@ -373,6 +374,7 @@ export interface ProductCreateInput {
   is_visible?: boolean
   options?: Omit<ProductOption, 'id' | 'product_id' | 'created_at'>[]
   images?: string[]
+  unavailable_dates?: { date: string; reason: string }[]
 }
 
 // 상품 수정 입력
@@ -395,6 +397,7 @@ export interface ProductUpdateInput {
   is_sold_out?: boolean
   options?: Omit<ProductOption, 'product_id' | 'created_at'>[]
   images?: string[]
+  unavailable_dates?: { date: string; reason: string }[] | null
 }
 
 // 상품 검색 필터
