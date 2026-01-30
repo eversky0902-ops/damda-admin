@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useRef, useCallback } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import {
   Form,
@@ -22,6 +22,8 @@ import {
   Cascader,
   DatePicker,
 } from 'antd'
+import ReactQuill from 'react-quill-new'
+import 'react-quill-new/dist/quill.snow.css'
 import {
   ArrowLeftOutlined,
   ShoppingOutlined,
@@ -40,12 +42,21 @@ import type { RcFile } from 'antd/es/upload/interface'
 import dayjs from 'dayjs'
 
 import { getBusinessOwners, getCategories } from '@/services/productService'
-import { uploadProductImage } from '@/services/storageService'
+import { uploadProductImage, uploadImage } from '@/services/storageService'
 import { REGION_OPTIONS, DAY_OF_WEEK_LABEL, TIME_SLOT_INTERVAL_OPTIONS } from '@/constants'
 import type { Product, TimeSlot, TimeSlotMode, TimeSlotInterval, Category } from '@/types'
 
 const { Text } = Typography
-const { TextArea } = Input
+
+const quillFormats = [
+  'header',
+  'bold', 'italic', 'underline', 'strike',
+  'list', 'bullet', 'indent',
+  'color', 'background',
+  'align',
+  'link',
+  'image',
+]
 
 function SectionHeader({
   icon,
@@ -108,6 +119,61 @@ export function ProductForm({
   const [form] = Form.useForm()
   const [isPostcodeOpen, setIsPostcodeOpen] = useState(false)
   const isEdit = mode === 'edit'
+  const quillRef = useRef<ReactQuill>(null)
+
+  // HTML 에디터 이미지 업로드 핸들러
+  const descriptionImageHandler = useCallback(() => {
+    const input = document.createElement('input')
+    input.setAttribute('type', 'file')
+    input.setAttribute('accept', 'image/*')
+    input.click()
+
+    input.onchange = async () => {
+      const file = input.files?.[0]
+      if (!file) return
+
+      // 파일 크기 체크 (5MB)
+      if (file.size > 5 * 1024 * 1024) {
+        message.error('이미지 크기는 5MB 이하만 가능합니다')
+        return
+      }
+
+      try {
+        message.loading({ content: '이미지 업로드 중...', key: 'upload' })
+        const imageUrl = await uploadImage(file, 'product-descriptions')
+        message.success({ content: '이미지 업로드 완료', key: 'upload' })
+
+        const quill = quillRef.current?.getEditor()
+        if (quill) {
+          const range = quill.getSelection(true)
+          quill.insertEmbed(range.index, 'image', imageUrl)
+          quill.setSelection(range.index + 1)
+        }
+      } catch (error) {
+        console.error('Image upload failed:', error)
+        message.error({ content: '이미지 업로드에 실패했습니다', key: 'upload' })
+      }
+    }
+  }, [])
+
+  // quillModules
+  const quillModules = useMemo(() => ({
+    toolbar: {
+      container: [
+        [{ 'header': [1, 2, 3, 4, 5, 6, false] }],
+        ['bold', 'italic', 'underline', 'strike'],
+        [{ 'list': 'ordered' }, { 'list': 'bullet' }],
+        [{ 'indent': '-1' }, { 'indent': '+1' }],
+        [{ 'color': [] }, { 'background': [] }],
+        [{ 'align': [] }],
+        ['link', 'image'],
+        ['clean'],
+      ],
+      handlers: {
+        image: descriptionImageHandler,
+      },
+    },
+  }), [descriptionImageHandler])
 
   // 썸네일
   const [thumbnailUrl, setThumbnailUrl] = useState<string>(initialValues?.thumbnail || '')
@@ -1196,12 +1262,27 @@ export function ProductForm({
           <SectionHeader
             icon={<ShoppingOutlined />}
             title="상세 설명"
-            description="상품의 상세한 설명을 입력해주세요"
+            description="상품의 상세한 설명을 입력해주세요. 이미지를 첨부할 수 있습니다."
           />
 
           <Form.Item name="description">
-            <TextArea rows={10} placeholder="상품 상세 설명을 입력하세요" />
+            <ReactQuill
+              ref={quillRef}
+              theme="snow"
+              modules={quillModules}
+              formats={quillFormats}
+              placeholder="상품 상세 설명을 입력하세요"
+              className="product-description-editor"
+            />
           </Form.Item>
+          <style>{`
+            .product-description-editor .ql-container {
+              min-height: 300px;
+            }
+            .product-description-editor .ql-editor {
+              min-height: 300px;
+            }
+          `}</style>
         </Card>
 
         {/* 버튼 영역 */}
