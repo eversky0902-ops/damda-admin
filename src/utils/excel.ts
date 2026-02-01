@@ -3,6 +3,7 @@ import type { BusinessOwner, Product } from '@/types'
 
 // 사업주 엑셀 다운로드용 컬럼 정의
 export const VENDOR_EXCEL_COLUMNS = [
+  { key: 'id', header: 'ID' },
   { key: 'name', header: '사업자명' },
   { key: 'business_number', header: '사업자번호' },
   { key: 'representative', header: '대표자' },
@@ -22,10 +23,14 @@ export const VENDOR_EXCEL_COLUMNS = [
 
 // 상품 엑셀 다운로드용 컬럼 정의
 export const PRODUCT_EXCEL_COLUMNS = [
+  { key: 'id', header: 'ID' },
   { key: 'name', header: '상품명' },
   { key: 'summary', header: '요약' },
+  { key: 'business_owner_id', header: '사업주ID' },
   { key: 'business_owner_name', header: '사업주' },
+  { key: 'category_id', header: '카테고리ID' },
   { key: 'category_name', header: '카테고리' },
+  { key: 'thumbnail', header: '썸네일URL' },
   { key: 'original_price', header: '정가' },
   { key: 'sale_price', header: '판매가' },
   { key: 'min_participants', header: '최소인원' },
@@ -39,8 +44,25 @@ export const PRODUCT_EXCEL_COLUMNS = [
   { key: 'created_at', header: '등록일' },
 ] as const
 
+// 결제 엑셀 다운로드용 컬럼 정의
+export const PAYMENT_EXCEL_COLUMNS = [
+  { key: 'id', header: '결제ID' },
+  { key: 'reservation_number', header: '예약번호' },
+  { key: 'daycare_name', header: '어린이집' },
+  { key: 'product_name', header: '상품명' },
+  { key: 'business_owner_name', header: '사업주' },
+  { key: 'payment_method', header: '결제수단' },
+  { key: 'pg_provider', header: 'PG사' },
+  { key: 'pg_tid', header: 'PG TID' },
+  { key: 'amount', header: '결제금액' },
+  { key: 'status', header: '상태' },
+  { key: 'paid_at', header: '결제완료일시' },
+  { key: 'created_at', header: '결제요청일시' },
+] as const
+
 // 사업주 엑셀 업로드용 컬럼 정의 (필수 필드)
 export const VENDOR_UPLOAD_COLUMNS = [
+  { key: 'id', header: 'ID', required: false }, // ID가 있으면 수정, 없으면 신규
   { key: 'email', header: '이메일', required: true },
   { key: 'name', header: '사업자명', required: true },
   { key: 'business_number', header: '사업자번호', required: true },
@@ -58,6 +80,7 @@ export const VENDOR_UPLOAD_COLUMNS = [
 
 // 상품 엑셀 업로드용 컬럼 정의 (필수 필드)
 export const PRODUCT_UPLOAD_COLUMNS = [
+  { key: 'id', header: 'ID', required: false }, // ID가 있으면 수정, 없으면 신규
   { key: 'name', header: '상품명', required: true },
   { key: 'business_owner_id', header: '사업주ID', required: true },
   { key: 'thumbnail', header: '썸네일URL', required: true },
@@ -132,11 +155,66 @@ export function formatVendorsForExcel(vendors: BusinessOwner[]) {
 export function formatProductsForExcel(products: Product[]) {
   return products.map((product) => ({
     ...product,
+    business_owner_id: product.business_owner_id || product.business_owner?.id || '',
     business_owner_name: product.business_owner?.name || '',
+    category_id: product.category_id || product.category?.id || '',
     category_name: product.category?.name || '',
     is_visible: product.is_visible ? 'Y' : 'N',
     is_sold_out: product.is_sold_out ? 'Y' : 'N',
   }))
+}
+
+// 결제 상태 한글 변환
+const PAYMENT_STATUS_KR: Record<string, string> = {
+  pending: '대기중',
+  paid: '결제완료',
+  failed: '실패',
+  cancelled: '취소됨',
+}
+
+// 결제수단 한글 변환
+const PAYMENT_METHOD_KR: Record<string, string> = {
+  card: '카드',
+  bank: '계좌이체',
+  virtual: '가상계좌',
+  phone: '휴대폰',
+}
+
+// 결제 데이터 엑셀 형식으로 변환
+export function formatPaymentsForExcel(payments: PaymentWithDetails[]) {
+  return payments.map((payment) => ({
+    id: payment.id,
+    reservation_number: payment.reservation?.reservation_number || '',
+    daycare_name: payment.reservation?.daycare?.name || '',
+    product_name: payment.reservation?.product?.name || '',
+    business_owner_name: payment.reservation?.business_owner?.name || '',
+    payment_method: PAYMENT_METHOD_KR[payment.payment_method] || payment.payment_method,
+    pg_provider: payment.pg_provider,
+    pg_tid: payment.pg_tid || '',
+    amount: payment.amount,
+    status: PAYMENT_STATUS_KR[payment.status] || payment.status,
+    paid_at: payment.paid_at || '',
+    created_at: payment.created_at,
+  }))
+}
+
+// PaymentWithDetails 타입 import를 위한 인터페이스
+interface PaymentWithDetails {
+  id: string
+  reservation_id: string
+  pg_provider: string
+  pg_tid: string | null
+  payment_method: string
+  amount: number
+  status: string
+  paid_at: string | null
+  created_at: string
+  reservation?: {
+    reservation_number?: string
+    daycare?: { name: string }
+    product?: { name: string }
+    business_owner?: { name: string }
+  }
 }
 
 // 엑셀 파일 파싱
@@ -444,6 +522,7 @@ export function downloadVendorTemplate() {
   )
   const sampleData = [
     [
+      '', // ID (비워두면 신규 등록)
       'example@email.com',
       '예시사업자',
       '1234567890',
@@ -469,6 +548,29 @@ export function downloadVendorTemplate() {
   const wb = XLSX.utils.book_new()
   XLSX.utils.book_append_sheet(wb, ws, '사업주등록양식')
 
+  // 안내 시트 추가
+  const guideData = [
+    ['사업주 엑셀 업로드 안내'],
+    [''],
+    ['[ID 컬럼 안내]'],
+    ['- ID가 비어있으면: 신규 사업주로 등록됩니다.'],
+    ['- ID가 있으면: 해당 사업주 정보가 수정됩니다.'],
+    ['- 기존 데이터를 수정하려면 "전체 목록 다운로드"로 받은 엑셀에서 ID를 복사하세요.'],
+    [''],
+    ['[필수 항목]'],
+    ['* 표시가 있는 항목은 반드시 입력해야 합니다.'],
+    [''],
+    ['[사업자번호]'],
+    ['- 하이픈(-) 없이 10자리 숫자만 입력'],
+    ['예시: 1234567890'],
+    [''],
+    ['[수수료율]'],
+    ['- 0~100 사이의 숫자 (기본값: 10)'],
+  ]
+  const guideWs = XLSX.utils.aoa_to_sheet(guideData)
+  guideWs['!cols'] = [{ wch: 60 }]
+  XLSX.utils.book_append_sheet(wb, guideWs, '입력안내')
+
   XLSX.writeFile(wb, '사업주_등록_양식.xlsx')
 }
 
@@ -479,6 +581,7 @@ export function downloadProductTemplate() {
   )
   const sampleData = [
     [
+      '', // ID (비워두면 신규 등록)
       '예시 상품명',
       'business-owner-uuid',
       'https://example.com/image.jpg',
@@ -510,6 +613,11 @@ export function downloadProductTemplate() {
   // 안내 시트 추가
   const guideData = [
     ['상품 엑셀 업로드 안내'],
+    [''],
+    ['[ID 컬럼 안내]'],
+    ['- ID가 비어있으면: 신규 상품으로 등록됩니다.'],
+    ['- ID가 있으면: 해당 상품 정보가 수정됩니다.'],
+    ['- 기존 데이터를 수정하려면 "전체 목록 다운로드"로 받은 엑셀에서 ID를 복사하세요.'],
     [''],
     ['[필수 항목]'],
     ['* 표시가 있는 항목은 반드시 입력해야 합니다.'],

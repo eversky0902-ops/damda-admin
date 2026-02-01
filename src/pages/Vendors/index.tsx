@@ -14,7 +14,7 @@ import type { ColumnsType, TablePaginationConfig } from 'antd/es/table'
 import type { MenuProps } from 'antd'
 import dayjs from 'dayjs'
 
-import { getVendors, getAllVendors, createVendorsBulk } from '@/services/vendorService'
+import { getVendors, getAllVendors, upsertVendorsBulk } from '@/services/vendorService'
 import { VENDOR_STATUS_LABEL, DEFAULT_PAGE_SIZE, DATE_FORMAT } from '@/constants'
 import type { BusinessOwner, VendorStatus, BusinessOwnerCreateInput } from '@/types'
 import {
@@ -38,7 +38,12 @@ export function VendorsPage() {
   // 엑셀 업로드 모달 상태
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false)
   const [uploadErrors, setUploadErrors] = useState<{ row: number; message: string }[]>([])
-  const [uploadResult, setUploadResult] = useState<{ success: number; failed: { row: number; error: string }[] } | null>(null)
+  const [uploadResult, setUploadResult] = useState<{
+    success: number
+    created: number
+    updated: number
+    failed: { row: number; error: string }[]
+  } | null>(null)
 
   const { data, isLoading } = useQuery({
     queryKey: ['vendors', page, pageSize, search, statusFilter],
@@ -51,9 +56,9 @@ export function VendorsPage() {
       }),
   })
 
-  // 대량 업로드 mutation
+  // 대량 업로드 mutation (upsert)
   const uploadMutation = useMutation({
-    mutationFn: (inputs: BusinessOwnerCreateInput[]) => createVendorsBulk(inputs),
+    mutationFn: (inputs: (BusinessOwnerCreateInput & { id?: string })[]) => upsertVendorsBulk(inputs),
     onSuccess: (result) => {
       setUploadResult(result)
       if (result.success > 0) {
@@ -117,8 +122,8 @@ export function VendorsPage() {
         return
       }
 
-      // 업로드 실행
-      uploadMutation.mutate(valid as unknown as BusinessOwnerCreateInput[])
+      // 업로드 실행 (upsert)
+      uploadMutation.mutate(valid as unknown as (BusinessOwnerCreateInput & { id?: string })[])
     } catch (error) {
       setUploadErrors([
         { row: 0, message: error instanceof Error ? error.message : '파일 처리 중 오류가 발생했습니다.' },
@@ -329,8 +334,10 @@ export function VendorsPage() {
               <ul style={{ margin: 0, paddingLeft: 20 }}>
                 <li>양식 다운로드 버튼을 클릭하여 엑셀 양식을 먼저 다운로드하세요.</li>
                 <li>* 표시가 있는 필드는 필수 항목입니다.</li>
-                <li>사업자번호는 10자리 숫자만 입력하세요 (하이픈 제외).</li>
-                <li>업로드 시 각 사업주마다 계정이 자동 생성됩니다.</li>
+                <li><strong>ID가 비어있으면</strong> 신규 사업주로 등록됩니다.</li>
+                <li><strong>ID가 있으면</strong> 해당 사업주 정보가 수정됩니다.</li>
+                <li>기존 데이터 수정 시 "전체 목록 다운로드"로 ID를 확인하세요.</li>
+                <li>사업자번호는 10자리 숫자만 입력 (하이픈 제외).</li>
               </ul>
             }
             type="info"
@@ -385,7 +392,11 @@ export function VendorsPage() {
               message="업로드 완료"
               description={
                 <div>
-                  <p style={{ margin: '4px 0' }}>성공: {uploadResult.success}건</p>
+                  <p style={{ margin: '4px 0' }}>
+                    성공: {uploadResult.success}건
+                    {uploadResult.created > 0 && <span style={{ color: '#52c41a' }}> (신규 {uploadResult.created}건)</span>}
+                    {uploadResult.updated > 0 && <span style={{ color: '#1677ff' }}> (수정 {uploadResult.updated}건)</span>}
+                  </p>
                   {uploadResult.failed.length > 0 && (
                     <>
                       <p style={{ margin: '4px 0', color: '#ff4d4f' }}>

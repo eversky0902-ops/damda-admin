@@ -326,3 +326,49 @@ export async function getPaymentMethods(): Promise<string[]> {
   const methods = [...new Set(data.map(d => d.payment_method))]
   return methods.sort()
 }
+
+// 전체 결제 목록 조회 (엑셀 다운로드용)
+export async function getAllPayments(
+  filter?: PaymentFilter
+): Promise<PaymentWithDetails[]> {
+  let query = supabase
+    .from('payments')
+    .select(`
+      *,
+      reservation:reservations(
+        id,
+        reservation_number,
+        daycare:daycares(id, name),
+        product:products(id, name),
+        business_owner:business_owners(id, name)
+      )
+    `)
+
+  // 상태 필터
+  if (filter?.status && filter.status !== 'all') {
+    query = query.eq('status', filter.status)
+  }
+
+  // 결제수단 필터
+  if (filter?.payment_method && filter.payment_method !== 'all') {
+    query = query.eq('payment_method', filter.payment_method)
+  }
+
+  // 날짜 범위 필터
+  if (filter?.date_from) {
+    query = query.gte('created_at', `${filter.date_from}T00:00:00`)
+  }
+  if (filter?.date_to) {
+    query = query.lte('created_at', `${filter.date_to}T23:59:59`)
+  }
+
+  query = query.order('created_at', { ascending: false })
+
+  const { data, error } = await query
+
+  if (error) {
+    throw new Error(error.message)
+  }
+
+  return (data as PaymentWithDetails[]) || []
+}

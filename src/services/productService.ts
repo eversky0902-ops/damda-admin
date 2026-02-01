@@ -457,7 +457,7 @@ export async function getAllProducts(): Promise<Product[]> {
   return (data as Product[]) || []
 }
 
-// 상품 대량 생성 (엑셀 업로드용)
+// 상품 대량 생성 (엑셀 업로드용) - 레거시, upsertProductsBulk 사용 권장
 export async function createProductsBulk(
   inputs: ProductCreateInput[]
 ): Promise<{ success: number; failed: { row: number; error: string }[] }> {
@@ -474,6 +474,46 @@ export async function createProductsBulk(
     } catch (error) {
       results.failed.push({
         row: i + 2, // 엑셀에서 헤더가 1행이므로 데이터는 2행부터
+        error: error instanceof Error ? error.message : '알 수 없는 오류',
+      })
+    }
+  }
+
+  return results
+}
+
+// 상품 대량 업서트 (엑셀 업로드용) - ID 있으면 수정, 없으면 생성
+export async function upsertProductsBulk(
+  inputs: (ProductCreateInput & { id?: string })[]
+): Promise<{
+  success: number
+  created: number
+  updated: number
+  failed: { row: number; error: string }[]
+}> {
+  const results = {
+    success: 0,
+    created: 0,
+    updated: 0,
+    failed: [] as { row: number; error: string }[],
+  }
+
+  for (let i = 0; i < inputs.length; i++) {
+    const { id, ...input } = inputs[i]
+    try {
+      if (id && id.trim()) {
+        // ID가 있으면 수정
+        await updateProduct(id, input as ProductUpdateInput)
+        results.updated++
+      } else {
+        // ID가 없으면 생성
+        await createProduct(input)
+        results.created++
+      }
+      results.success++
+    } catch (error) {
+      results.failed.push({
+        row: i + 2,
         error: error instanceof Error ? error.message : '알 수 없는 오류',
       })
     }
