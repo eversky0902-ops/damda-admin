@@ -35,6 +35,18 @@ export interface DailyRevenueData {
   count: number
 }
 
+// 일별 매출 세분화 데이터
+export interface DailyRevenueDetailData {
+  date: string
+  displayDate: string
+  revenue: number          // 매출액 (결제 완료)
+  refundAmount: number     // 환불액
+  cancelFee: number        // 취소수수료
+  netRevenue: number       // 순매출 (매출 - 환불)
+  settlementAmount: number // 정산액 (매출 - 플랫폼수수료)
+  count: number            // 결제 건수
+}
+
 // 요일별 예약 데이터
 export interface WeekdayData {
   day: string
@@ -237,6 +249,94 @@ export async function getDailyRevenue(days = 14): Promise<DailyRevenueData[]> {
     date,
     displayDate: `${parseInt(date.split('-')[1])}/${parseInt(date.split('-')[2])}`,
     amount: data.amount,
+    count: data.count,
+  }))
+}
+
+// 일별 매출 세분화 데이터 (기간 지정 가능)
+export async function getDailyRevenueDetail(
+  startDate: string,
+  endDate: string
+): Promise<DailyRevenueDetailData[]> {
+  const [paymentsData, refundsData] = await Promise.all([
+    // 결제 완료 데이터
+    supabase
+      .from('payments')
+      .select('amount, paid_at')
+      .eq('status', 'paid')
+      .gte('paid_at', `${startDate}T00:00:00`)
+      .lte('paid_at', `${endDate}T23:59:59`)
+      .order('paid_at', { ascending: true }),
+
+    // 환불 완료 데이터
+    supabase
+      .from('refunds')
+      .select('refund_amount, original_amount, refunded_at')
+      .eq('status', 'completed')
+      .gte('refunded_at', `${startDate}T00:00:00`)
+      .lte('refunded_at', `${endDate}T23:59:59`)
+      .order('refunded_at', { ascending: true }),
+  ])
+
+  if (paymentsData.error) throw new Error(paymentsData.error.message)
+  if (refundsData.error) throw new Error(refundsData.error.message)
+
+  // 날짜별로 집계
+  const dailyMap = new Map<string, {
+    revenue: number
+    refundAmount: number
+    cancelFee: number
+    count: number
+  }>()
+
+  // 모든 날짜 초기화
+  const start = new Date(startDate)
+  const end = new Date(endDate)
+  const dayCount = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1
+
+  for (let i = 0; i < dayCount; i++) {
+    const date = new Date(start)
+    date.setDate(date.getDate() + i)
+    const dateStr = date.toISOString().split('T')[0]
+    dailyMap.set(dateStr, { revenue: 0, refundAmount: 0, cancelFee: 0, count: 0 })
+  }
+
+  // 결제 데이터 집계
+  paymentsData.data?.forEach((row) => {
+    if (row.paid_at) {
+      const dateStr = row.paid_at.split('T')[0]
+      const existing = dailyMap.get(dateStr)
+      if (existing) {
+        existing.revenue += row.amount || 0
+        existing.count += 1
+      }
+    }
+  })
+
+  // 환불 데이터 집계
+  refundsData.data?.forEach((row) => {
+    if (row.refunded_at) {
+      const dateStr = row.refunded_at.split('T')[0]
+      const existing = dailyMap.get(dateStr)
+      if (existing) {
+        existing.refundAmount += row.refund_amount || 0
+        // 취소수수료 = 원래금액 - 환불금액
+        existing.cancelFee += (row.original_amount || 0) - (row.refund_amount || 0)
+      }
+    }
+  })
+
+  // 결과 변환
+  const PLATFORM_COMMISSION_RATE = 0.1 // 플랫폼 수수료 10% (기본값)
+
+  return Array.from(dailyMap.entries()).map(([date, data]) => ({
+    date,
+    displayDate: `${parseInt(date.split('-')[1])}/${parseInt(date.split('-')[2])}`,
+    revenue: data.revenue,
+    refundAmount: data.refundAmount,
+    cancelFee: data.cancelFee,
+    netRevenue: data.revenue - data.refundAmount,
+    settlementAmount: Math.round(data.revenue * (1 - PLATFORM_COMMISSION_RATE)),
     count: data.count,
   }))
 }

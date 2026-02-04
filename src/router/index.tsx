@@ -27,6 +27,10 @@ import { ReservationsPage } from '@/pages/Reservations'
 import { ReservationDetailPage } from '@/pages/Reservations/ReservationDetail'
 import { PaymentsPage } from '@/pages/Payments'
 import { PaymentDetailPage } from '@/pages/Payments/PaymentDetail'
+import { SettlementsPage } from '@/pages/Settlements'
+import { SettlementDetailPage } from '@/pages/Settlements/SettlementDetail'
+import { SettlementCreatePage } from '@/pages/Settlements/SettlementCreate'
+import { SettlementEditPage } from '@/pages/Settlements/SettlementEdit'
 
 // Content Pages
 import { NoticesPage } from '@/pages/content/Notices'
@@ -169,6 +173,23 @@ export const router = createBrowserRouter([
       {
         path: 'payments/:id',
         element: <PaymentDetailPage />,
+      },
+      // Settlements
+      {
+        path: 'settlements',
+        element: <SettlementsPage />,
+      },
+      {
+        path: 'settlements/new',
+        element: <SettlementCreatePage />,
+      },
+      {
+        path: 'settlements/:id',
+        element: <SettlementDetailPage />,
+      },
+      {
+        path: 'settlements/:id/edit',
+        element: <SettlementEditPage />,
       },
       // Content - Notices
       {

@@ -1,10 +1,13 @@
-import { useState } from 'react'
-import { Form, Input, InputNumber, Button, Card, Typography, Row, Col, Modal } from 'antd'
-import { ArrowLeftOutlined, ShopOutlined, BankOutlined, SearchOutlined } from '@ant-design/icons'
+import { useState, useEffect } from 'react'
+import { Form, Input, InputNumber, Button, Card, Typography, Row, Col, Modal, message, List, Space, Popconfirm, Upload, Spin } from 'antd'
+import { ArrowLeftOutlined, ShopOutlined, BankOutlined, SearchOutlined, FileTextOutlined, UploadOutlined, DeleteOutlined, FileOutlined, FilePdfOutlined, FileImageOutlined } from '@ant-design/icons'
 import { DaumPostcodeEmbed, type Address } from 'react-daum-postcode'
+import type { RcFile } from 'antd/es/upload'
 
 import { LogoUpload } from '@/components/LogoUpload'
-import type { BusinessOwner } from '@/types'
+import { uploadVendorDocument, deleteVendorDocument } from '@/services/storageService'
+import { getVendorDocuments, addVendorDocument, deleteVendorDocumentRecord } from '@/services/vendorService'
+import type { BusinessOwner, BusinessOwnerDocument, BusinessOwnerDocumentType } from '@/types'
 
 const { Text } = Typography
 
@@ -29,6 +32,20 @@ interface VendorFormProps {
   isSubmitting?: boolean
 }
 
+function getFileIcon(mimeType?: string | null) {
+  if (!mimeType) return <FileOutlined />
+  if (mimeType.includes('pdf')) return <FilePdfOutlined style={{ color: '#ff4d4f' }} />
+  if (mimeType.includes('image')) return <FileImageOutlined style={{ color: '#1890ff' }} />
+  return <FileOutlined />
+}
+
+function formatFileSize(bytes?: number | null): string {
+  if (!bytes) return ''
+  if (bytes < 1024) return `${bytes} B`
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
+}
+
 export function VendorForm({
   mode,
   initialValues,
@@ -39,8 +56,81 @@ export function VendorForm({
 }: VendorFormProps) {
   const [form] = Form.useForm()
   const [isPostcodeOpen, setIsPostcodeOpen] = useState(false)
+  const [documents, setDocuments] = useState<BusinessOwnerDocument[]>([])
+  const [documentsLoading, setDocumentsLoading] = useState(false)
+  const [uploadingType, setUploadingType] = useState<BusinessOwnerDocumentType | null>(null)
 
   const isEdit = mode === 'edit'
+
+  // 문서 목록 로드
+  useEffect(() => {
+    if (isEdit && vendorId) {
+      loadDocuments()
+    }
+  }, [isEdit, vendorId])
+
+  const loadDocuments = async () => {
+    if (!vendorId) return
+    setDocumentsLoading(true)
+    try {
+      const docs = await getVendorDocuments(vendorId)
+      setDocuments(docs)
+    } catch (error) {
+      console.error('Failed to load documents:', error)
+    } finally {
+      setDocumentsLoading(false)
+    }
+  }
+
+  const handleDocumentUpload = async (file: RcFile, documentType: BusinessOwnerDocumentType) => {
+    if (!vendorId) {
+      message.error('먼저 저장 후 파일을 업로드해주세요')
+      return false
+    }
+
+    // 파일 검증
+    const isAllowedType = file.name.match(/\.(jpg|jpeg|png|gif|pdf|doc|docx|xls|xlsx)$/i)
+    if (!isAllowedType) {
+      message.error('JPG, PNG, GIF, PDF, DOC, XLS 파일만 업로드 가능합니다')
+      return false
+    }
+    const isLt20M = file.size / 1024 / 1024 < 20
+    if (!isLt20M) {
+      message.error('파일 크기는 20MB 이하여야 합니다')
+      return false
+    }
+
+    setUploadingType(documentType)
+    try {
+      const result = await uploadVendorDocument(file, vendorId, documentType)
+      await addVendorDocument({
+        business_owner_id: vendorId,
+        document_type: documentType,
+        file_name: result.fileName,
+        file_url: result.url,
+        file_size: result.fileSize,
+        mime_type: result.mimeType,
+      })
+      message.success('파일이 업로드되었습니다')
+      await loadDocuments()
+    } catch (error) {
+      message.error('업로드에 실패했습니다')
+    } finally {
+      setUploadingType(null)
+    }
+    return false
+  }
+
+  const handleDocumentDelete = async (doc: BusinessOwnerDocument) => {
+    try {
+      await deleteVendorDocument(doc.file_url)
+      await deleteVendorDocumentRecord(doc.id)
+      message.success('파일이 삭제되었습니다')
+      await loadDocuments()
+    } catch (error) {
+      message.error('삭제에 실패했습니다')
+    }
+  }
 
   const handlePostcodeComplete = (data: Address) => {
     form.setFieldsValue({
@@ -251,6 +341,92 @@ export function VendorForm({
             </Form.Item>
           )}
         </Card>
+
+        {isEdit && vendorId && (
+          <Card style={{ marginBottom: 24 }}>
+            <SectionHeader
+              icon={<FileTextOutlined />}
+              title="사업자 서류"
+              description="사업자등록증, 통장사본, 영업신고증 등 필요한 서류를 업로드해주세요."
+            />
+
+            {documentsLoading ? (
+              <div style={{ textAlign: 'center', padding: 24 }}>
+                <Spin />
+              </div>
+            ) : (
+              <>
+                <div style={{ marginBottom: 12 }}>
+                  <Upload
+                    showUploadList={false}
+                    beforeUpload={(file) => handleDocumentUpload(file, 'other')}
+                    accept=".jpg,.jpeg,.png,.gif,.pdf,.doc,.docx,.xls,.xlsx"
+                    disabled={uploadingType !== null}
+                  >
+                    <Button icon={<UploadOutlined />} loading={uploadingType !== null}>
+                      파일 업로드
+                    </Button>
+                  </Upload>
+                  <Text type="secondary" style={{ marginLeft: 8, fontSize: 12 }}>
+                    JPG, PNG, PDF, DOC, XLS (최대 20MB)
+                  </Text>
+                </div>
+
+                {documents.length > 0 ? (
+                  <List
+                    size="small"
+                    bordered
+                    dataSource={documents}
+                    renderItem={(doc) => (
+                      <List.Item
+                        actions={[
+                          <Popconfirm
+                            key="delete"
+                            title="파일을 삭제하시겠습니까?"
+                            onConfirm={() => handleDocumentDelete(doc)}
+                            okText="삭제"
+                            cancelText="취소"
+                          >
+                            <Button type="text" size="small" danger icon={<DeleteOutlined />} />
+                          </Popconfirm>,
+                        ]}
+                      >
+                        <Space>
+                          {getFileIcon(doc.mime_type)}
+                          <a href={doc.file_url} target="_blank" rel="noopener noreferrer">
+                            {doc.file_name}
+                          </a>
+                          {doc.file_size && (
+                            <Text type="secondary" style={{ fontSize: 12 }}>
+                              ({formatFileSize(doc.file_size)})
+                            </Text>
+                          )}
+                        </Space>
+                      </List.Item>
+                    )}
+                  />
+                ) : (
+                  <div style={{ padding: 24, textAlign: 'center', background: '#fafafa', borderRadius: 6 }}>
+                    <Text type="secondary">등록된 파일이 없습니다</Text>
+                  </div>
+                )}
+              </>
+            )}
+          </Card>
+        )}
+
+        {!isEdit && (
+          <Card style={{ marginBottom: 24, background: '#fafafa' }}>
+            <SectionHeader
+              icon={<FileTextOutlined />}
+              title="사업자 서류"
+              description="사업자 등록 후 수정 화면에서 서류를 업로드할 수 있습니다."
+            />
+            <Text type="secondary">
+              사업자등록증, 통장사본, 영업신고증 등의 서류는 사업자 등록 완료 후 업로드 가능합니다.
+            </Text>
+          </Card>
+        )}
 
         <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
           <Button icon={<ArrowLeftOutlined />} onClick={onCancel}>

@@ -92,3 +92,83 @@ export async function deleteImage(imageUrl: string): Promise<void> {
     console.error('Failed to delete image:', error)
   }
 }
+
+// 사업주 문서 업로드
+export async function uploadVendorDocument(
+  file: File,
+  vendorId: string,
+  documentType: string
+): Promise<{ url: string; fileName: string; fileSize: number; mimeType: string }> {
+  const fileExt = file.name.split('.').pop()
+  const timestamp = Date.now()
+  const random = Math.random().toString(36).substring(7)
+  const fileName = `${vendorId}_${documentType}_${timestamp}_${random}.${fileExt}`
+  const filePath = `vendor-documents/${vendorId}/${fileName}`
+
+  const { error: uploadError } = await supabase.storage
+    .from('public')
+    .upload(filePath, file, { upsert: true })
+
+  if (uploadError) {
+    throw new Error(uploadError.message)
+  }
+
+  const { data } = supabase.storage.from('public').getPublicUrl(filePath)
+  return {
+    url: data.publicUrl,
+    fileName: file.name,
+    fileSize: file.size,
+    mimeType: file.type,
+  }
+}
+
+// 사업주 문서 삭제
+export async function deleteVendorDocument(fileUrl: string): Promise<void> {
+  const path = fileUrl.split('/public/')[1]
+  if (!path) return
+
+  const { error } = await supabase.storage.from('public').remove([path])
+  if (error) {
+    console.error('Failed to delete vendor document:', error)
+  }
+}
+
+// 어린이집 문서 업로드
+export async function uploadDaycareDocument(
+  file: File,
+  daycareId: string,
+  documentType: string
+): Promise<{ url: string; fileName: string; fileSize: number; mimeType: string }> {
+  const fileExt = file.name.split('.').pop()
+  const timestamp = Date.now()
+  const random = Math.random().toString(36).substring(7)
+  const fileName = `${daycareId}_${documentType}_${timestamp}_${random}.${fileExt}`
+  const filePath = `daycare-documents/${daycareId}/${fileName}`
+
+  const { error: uploadError } = await supabase.storage
+    .from('public')
+    .upload(filePath, file, { upsert: true })
+
+  if (uploadError) {
+    throw new Error(uploadError.message)
+  }
+
+  const { data } = supabase.storage.from('public').getPublicUrl(filePath)
+  return {
+    url: data.publicUrl,
+    fileName: file.name,
+    fileSize: file.size,
+    mimeType: file.type,
+  }
+}
+
+// 어린이집 문서 삭제
+export async function deleteDaycareDocument(fileUrl: string): Promise<void> {
+  const path = fileUrl.split('/public/')[1]
+  if (!path) return
+
+  const { error } = await supabase.storage.from('public').remove([path])
+  if (error) {
+    console.error('Failed to delete daycare document:', error)
+  }
+}

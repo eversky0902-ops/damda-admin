@@ -10,6 +10,7 @@ import {
   StarOutlined,
   CalendarOutlined,
   CreditCardOutlined,
+  DollarOutlined,
   FileTextOutlined,
   SettingOutlined,
   LogoutOutlined,
@@ -61,6 +62,11 @@ const menuItems: MenuProps['items'] = [
     key: '/payments',
     icon: <CreditCardOutlined />,
     label: '결제 관리',
+  },
+  {
+    key: '/settlements',
+    icon: <DollarOutlined />,
+    label: '정산 관리',
   },
   {
     key: '/content',

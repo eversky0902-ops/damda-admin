@@ -1,6 +1,6 @@
 import { supabase } from '@/lib/supabase'
 import { logCreate, logUpdate, logStatusChange } from '@/services/adminLogService'
-import type { Daycare, DaycareFilter, DaycareMemo, DaycareCreateInput, DaycareUpdateInput, PaginatedResponse } from '@/types'
+import type { Daycare, DaycareFilter, DaycareMemo, DaycareCreateInput, DaycareUpdateInput, PaginatedResponse, DaycareDocument, DaycareDocumentCreateInput } from '@/types'
 
 interface GetDaycaresParams {
   page: number
@@ -236,6 +236,60 @@ export async function deleteDaycareMemo(memoId: string): Promise<void> {
     .from('daycare_memos')
     .delete()
     .eq('id', memoId)
+
+  if (error) {
+    throw new Error(error.message)
+  }
+}
+
+// 어린이집 문서 목록 조회
+// TODO: daycare_documents 테이블 생성 후 활성화
+export async function getDaycareDocuments(daycareId: string): Promise<DaycareDocument[]> {
+  const { data, error } = await (supabase as any)
+    .from('daycare_documents')
+    .select('*')
+    .eq('daycare_id', daycareId)
+    .order('document_type')
+    .order('sort_order')
+
+  if (error) {
+    throw new Error(error.message)
+  }
+
+  return (data as DaycareDocument[]) || []
+}
+
+// 어린이집 문서 추가
+export async function addDaycareDocument(
+  input: DaycareDocumentCreateInput
+): Promise<DaycareDocument> {
+  const { data, error } = await (supabase as any)
+    .from('daycare_documents')
+    .insert({
+      daycare_id: input.daycare_id,
+      document_type: input.document_type,
+      file_name: input.file_name,
+      file_url: input.file_url,
+      file_size: input.file_size || null,
+      mime_type: input.mime_type || null,
+      sort_order: input.sort_order || 0,
+    })
+    .select()
+    .single()
+
+  if (error) {
+    throw new Error(error.message)
+  }
+
+  return data as DaycareDocument
+}
+
+// 어린이집 문서 삭제
+export async function deleteDaycareDocumentRecord(documentId: string): Promise<void> {
+  const { error } = await (supabase as any)
+    .from('daycare_documents')
+    .delete()
+    .eq('id', documentId)
 
   if (error) {
     throw new Error(error.message)

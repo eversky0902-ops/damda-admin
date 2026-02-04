@@ -241,7 +241,18 @@ export function ProductsPage() {
       title: '사업주',
       key: 'business_owner',
       width: 140,
-      render: (_, record) => record.business_owner?.name || '-',
+      render: (_, record) => {
+        const owner = record.business_owner as { name: string; status?: string } | undefined
+        if (!owner) return '-'
+        return (
+          <span>
+            {owner.name}
+            {owner.status === 'inactive' && (
+              <Tag color="default" style={{ marginLeft: 4, fontSize: 10 }}>비활성</Tag>
+            )}
+          </span>
+        )
+      },
     },
     {
       title: '카테고리',

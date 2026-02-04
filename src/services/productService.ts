@@ -25,7 +25,7 @@ export async function getProducts(
     .select(
       `
       *,
-      business_owner:business_owners(id, name),
+      business_owner:business_owners(id, name, status),
       category:categories(id, name)
     `,
       { count: 'exact' }
@@ -67,7 +67,7 @@ export async function getProducts(
   }
 
   return {
-    data: (data as Product[]) || [],
+    data: (data as unknown as Product[]) || [],
     total: count || 0,
   }
 }
@@ -79,7 +79,7 @@ export async function getProduct(id: string): Promise<Product> {
     .select(
       `
       *,
-      business_owner:business_owners(id, name, email, contact_phone),
+      business_owner:business_owners(id, name, email, contact_phone, status),
       category:categories(id, name, parent_id)
     `
     )

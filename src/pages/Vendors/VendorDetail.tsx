@@ -17,8 +17,10 @@ import {
   message,
   Spin,
   Divider,
+  List,
+  Typography,
 } from 'antd'
-import { ArrowLeftOutlined, EditOutlined, ShopOutlined } from '@ant-design/icons'
+import { ArrowLeftOutlined, EditOutlined, ShopOutlined, FileOutlined, FilePdfOutlined, FileImageOutlined } from '@ant-design/icons'
 import type { ColumnsType } from 'antd/es/table'
 import dayjs from 'dayjs'
 
@@ -28,10 +30,11 @@ import {
   getSettlements,
   getCommissionHistories,
   updateCommissionRate,
+  getVendorDocuments,
 } from '@/services/vendorService'
 import { useAuthStore } from '@/stores/authStore'
 import { VENDOR_STATUS_LABEL, DATE_FORMAT, DEFAULT_PAGE_SIZE } from '@/constants'
-import type { Settlement, CommissionHistory, SettlementStatus } from '@/types'
+import type { Settlement, CommissionHistory, SettlementStatus, BusinessOwnerDocument } from '@/types'
 
 export function VendorDetailPage() {
   const { id } = useParams<{ id: string }>()
@@ -62,6 +65,13 @@ export function VendorDetailPage() {
   const { data: commissionHistories } = useQuery({
     queryKey: ['commissionHistories', id],
     queryFn: () => getCommissionHistories(id!),
+    enabled: !!id,
+  })
+
+  // 문서 목록 조회
+  const { data: documents = [] } = useQuery({
+    queryKey: ['vendorDocuments', id],
+    queryFn: () => getVendorDocuments(id!),
     enabled: !!id,
   })
 
@@ -245,6 +255,40 @@ export function VendorDetailPage() {
               {dayjs(vendor.created_at).format(DATE_FORMAT)}
             </Descriptions.Item>
           </Descriptions>
+
+          <h4 style={{ marginTop: 24, marginBottom: 12 }}>사업자 서류 ({documents.length}개)</h4>
+          {documents.length > 0 ? (
+            <List
+              size="small"
+              bordered
+              dataSource={documents}
+              renderItem={(doc: BusinessOwnerDocument) => (
+                <List.Item>
+                  <Space>
+                    {doc.mime_type?.includes('pdf') ? (
+                      <FilePdfOutlined style={{ color: '#ff4d4f' }} />
+                    ) : doc.mime_type?.includes('image') ? (
+                      <FileImageOutlined style={{ color: '#1890ff' }} />
+                    ) : (
+                      <FileOutlined />
+                    )}
+                    <a href={doc.file_url} target="_blank" rel="noopener noreferrer">
+                      {doc.file_name}
+                    </a>
+                    {doc.file_size && (
+                      <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+                        ({(doc.file_size / 1024 / 1024).toFixed(2)} MB)
+                      </Typography.Text>
+                    )}
+                  </Space>
+                </List.Item>
+              )}
+            />
+          ) : (
+            <div style={{ padding: 16, background: '#fafafa', borderRadius: 6 }}>
+              <Typography.Text type="secondary">등록된 서류가 없습니다</Typography.Text>
+            </div>
+          )}
         </>
       ),
     },

@@ -869,3 +869,55 @@ export interface LegalDocumentFilter {
   status?: 'all' | 'visible' | 'hidden'
   search?: string
 }
+
+// 사업주 문서 타입
+export type BusinessOwnerDocumentType = 'business_registration' | 'bank_account' | 'business_license' | 'other'
+
+export interface BusinessOwnerDocument {
+  id: string
+  business_owner_id: string
+  document_type: BusinessOwnerDocumentType
+  file_name: string
+  file_url: string
+  file_size: number | null
+  mime_type: string | null
+  sort_order: number
+  created_at: string
+  updated_at: string
+}
+
+export interface BusinessOwnerDocumentCreateInput {
+  business_owner_id: string
+  document_type: BusinessOwnerDocumentType
+  file_name: string
+  file_url: string
+  file_size?: number
+  mime_type?: string
+  sort_order?: number
+}
+
+// 어린이집 문서 타입
+export type DaycareDocumentType = 'license' | 'other'
+
+export interface DaycareDocument {
+  id: string
+  daycare_id: string
+  document_type: DaycareDocumentType
+  file_name: string
+  file_url: string
+  file_size: number | null
+  mime_type: string | null
+  sort_order: number
+  created_at: string
+  updated_at: string
+}
+
+export interface DaycareDocumentCreateInput {
+  daycare_id: string
+  document_type: DaycareDocumentType
+  file_name: string
+  file_url: string
+  file_size?: number
+  mime_type?: string
+  sort_order?: number
+}

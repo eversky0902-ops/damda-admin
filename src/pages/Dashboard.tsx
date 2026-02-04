@@ -1,25 +1,17 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { Row, Col, Card, Statistic, Table, Tag, Spin, Segmented, Progress, List, Typography } from 'antd'
+import { Row, Col, Card, Statistic, Table, Tag, Spin, Progress, List, Typography, DatePicker, Button, Space, Tooltip as AntTooltip } from 'antd'
 import {
-  ShoppingOutlined,
-  CalendarOutlined,
-  UserOutlined,
   DollarOutlined,
   RiseOutlined,
-  FallOutlined,
-  ClockCircleOutlined,
   CheckCircleOutlined,
   CloseCircleOutlined,
   TrophyOutlined,
-  UserAddOutlined,
 } from '@ant-design/icons'
 import type { ColumnsType } from 'antd/es/table'
 import dayjs from 'dayjs'
 import { useNavigate } from 'react-router-dom'
 import {
-  AreaChart,
-  Area,
   XAxis,
   YAxis,
   CartesianGrid,
@@ -31,12 +23,13 @@ import {
   Pie,
   Cell,
   Legend,
+  LineChart,
+  Line,
 } from 'recharts'
 
 import {
-  getDashboardStats,
   getRecentReservations,
-  getDailyRevenue,
+  getDailyRevenueDetail,
   getWeekdayDistribution,
   getTopProducts,
   getStatusDistribution,
@@ -46,20 +39,55 @@ import { RESERVATION_STATUS_LABEL, RESERVATION_STATUS_COLOR } from '@/constants'
 import type { ReservationStatusType } from '@/types'
 
 const { Text } = Typography
+const { RangePicker } = DatePicker
 
-// 차트 기간 옵션
-type ChartPeriod = '7' | '14' | '30'
+// 빠른 기간 선택 타입
+type QuickPeriod = '1d' | '1m' | '1y' | 'custom'
 
 export function DashboardPage() {
   const navigate = useNavigate()
-  const [chartPeriod, setChartPeriod] = useState<ChartPeriod>('14')
 
-  // 대시보드 통계 조회
-  const { data: stats, isLoading: statsLoading } = useQuery({
-    queryKey: ['dashboardStats'],
-    queryFn: getDashboardStats,
-    refetchInterval: 60000,
+  // 기간 선택 상태
+  const [quickPeriod, setQuickPeriod] = useState<QuickPeriod>('1m')
+  const [dateRange, setDateRange] = useState<[dayjs.Dayjs, dayjs.Dayjs]>(() => {
+    const end = dayjs()
+    const start = end.subtract(1, 'month')
+    return [start, end]
   })
+
+  // 빠른 기간 선택 핸들러
+  const handleQuickPeriod = (period: QuickPeriod) => {
+    setQuickPeriod(period)
+    const end = dayjs()
+    let start: dayjs.Dayjs
+
+    switch (period) {
+      case '1d':
+        start = end.subtract(1, 'day')
+        break
+      case '1m':
+        start = end.subtract(1, 'month')
+        break
+      case '1y':
+        start = end.subtract(1, 'year')
+        break
+      default:
+        return
+    }
+    setDateRange([start, end])
+  }
+
+  // 직접 날짜 선택 핸들러
+  const handleDateRangeChange = (dates: [dayjs.Dayjs | null, dayjs.Dayjs | null] | null) => {
+    if (dates && dates[0] && dates[1]) {
+      setQuickPeriod('custom')
+      setDateRange([dates[0], dates[1]])
+    }
+  }
+
+  // 조회할 날짜 범위 (문자열)
+  const startDateStr = useMemo(() => dateRange[0].format('YYYY-MM-DD'), [dateRange])
+  const endDateStr = useMemo(() => dateRange[1].format('YYYY-MM-DD'), [dateRange])
 
   // 최근 예약 조회
   const { data: recentReservations, isLoading: reservationsLoading } = useQuery({
@@ -67,10 +95,10 @@ export function DashboardPage() {
     queryFn: () => getRecentReservations(5),
   })
 
-  // 일별 매출 추이
-  const { data: dailyRevenue } = useQuery({
-    queryKey: ['dailyRevenue', chartPeriod],
-    queryFn: () => getDailyRevenue(parseInt(chartPeriod)),
+  // 일별 매출 추이 (세분화)
+  const { data: dailyRevenueDetail, isLoading: revenueLoading } = useQuery({
+    queryKey: ['dailyRevenueDetail', startDateStr, endDateStr],
+    queryFn: () => getDailyRevenueDetail(startDateStr, endDateStr),
   })
 
   // 요일별 예약 분포
@@ -131,134 +159,140 @@ export function DashboardPage() {
   // 금액 포맷팅 (차트 툴팁용)
   const formatAmount = (value: number) => `${value.toLocaleString()}원`
 
-  // 전월 대비 성장률 표시
-  const GrowthIndicator = ({ value }: { value: number }) => {
-    if (value === 0) return <Text type="secondary">-</Text>
-    const isPositive = value > 0
-    return (
-      <span style={{ color: isPositive ? '#52c41a' : '#ff4d4f', fontSize: 12 }}>
-        {isPositive ? <RiseOutlined /> : <FallOutlined />}
-        {' '}{isPositive ? '+' : ''}{value}%
-      </span>
-    )
-  }
-
-  if (statsLoading) {
-    return (
-      <div style={{ textAlign: 'center', padding: 100 }}>
-        <Spin size="large" />
-      </div>
-    )
-  }
-
   // 총 예약 수 (파이차트용)
   const totalReservations = statusData?.reduce((sum, s) => sum + s.count, 0) || 0
 
   return (
     <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
         <h2 style={{ margin: 0 }}>대시보드</h2>
         <Text type="secondary">{dayjs().format('YYYY년 MM월 DD일 (ddd)')}</Text>
       </div>
 
-      {/* 핵심 지표 */}
+      {/* 기간 선택 필터 */}
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: 12,
+        marginBottom: 16,
+        padding: '12px 16px',
+        background: '#fafafa',
+        borderRadius: 8,
+      }}>
+        <Text strong style={{ fontSize: 13 }}>조회 기간</Text>
+        <Space size={8}>
+          <Button
+            size="small"
+            type={quickPeriod === '1d' ? 'primary' : 'default'}
+            onClick={() => handleQuickPeriod('1d')}
+          >
+            1일
+          </Button>
+          <Button
+            size="small"
+            type={quickPeriod === '1m' ? 'primary' : 'default'}
+            onClick={() => handleQuickPeriod('1m')}
+          >
+            1달
+          </Button>
+          <Button
+            size="small"
+            type={quickPeriod === '1y' ? 'primary' : 'default'}
+            onClick={() => handleQuickPeriod('1y')}
+          >
+            1년
+          </Button>
+          <RangePicker
+            size="small"
+            value={dateRange}
+            onChange={handleDateRangeChange}
+            allowClear={false}
+            style={{ width: 220 }}
+          />
+        </Space>
+        <Text type="secondary" style={{ fontSize: 12, marginLeft: 'auto' }}>
+          {dateRange[0].format('YYYY.MM.DD')} ~ {dateRange[1].format('YYYY.MM.DD')}
+        </Text>
+      </div>
+
+      {/* 매출 지표 (날짜 필터 연동) */}
       <Row gutter={[16, 16]}>
         <Col xs={24} sm={12} lg={6}>
-          <Card size="small">
+          <Card size="small" loading={revenueLoading}>
             <Statistic
               title={
-                <span>
-                  이번 달 매출{' '}
-                  <GrowthIndicator value={stats?.revenueGrowth || 0} />
+                <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                  <DollarOutlined style={{ color: '#1890ff' }} />
+                  매출액
                 </span>
               }
-              value={stats?.monthlyRevenue || 0}
-              prefix={<DollarOutlined />}
-              suffix="원"
-              valueStyle={{ color: '#3f8600' }}
-              formatter={(value) => Number(value).toLocaleString()}
-            />
-            <div style={{ marginTop: 8, fontSize: 12, color: '#999' }}>
-              전월: {(stats?.lastMonthRevenue || 0).toLocaleString()}원
-            </div>
-          </Card>
-        </Col>
-        <Col xs={24} sm={12} lg={6}>
-          <Card size="small">
-            <Statistic
-              title="오늘 매출"
-              value={stats?.todayRevenue || 0}
-              prefix={<RiseOutlined />}
+              value={dailyRevenueDetail?.reduce((sum, d) => sum + d.revenue, 0) || 0}
               suffix="원"
               valueStyle={{ color: '#1890ff' }}
               formatter={(value) => Number(value).toLocaleString()}
             />
-          </Card>
-        </Col>
-        <Col xs={24} sm={12} lg={6}>
-          <Card size="small">
-            <Statistic
-              title="이번 달 예약"
-              value={stats?.newReservations || 0}
-              prefix={<CalendarOutlined />}
-              suffix="건"
-            />
-            <div style={{ marginTop: 8, display: 'flex', gap: 12, fontSize: 12 }}>
-              <span style={{ color: '#52c41a' }}>
-                <CheckCircleOutlined /> 완료 {stats?.completedReservations || 0}
-              </span>
-              <span style={{ color: '#ff4d4f' }}>
-                <CloseCircleOutlined /> 취소 {stats?.cancelledReservations || 0}
-              </span>
+            <div style={{ marginTop: 8, fontSize: 12, color: '#999' }}>
+              {dailyRevenueDetail?.reduce((sum, d) => sum + d.count, 0) || 0}건 결제
             </div>
           </Card>
         </Col>
         <Col xs={24} sm={12} lg={6}>
-          <Card size="small">
-            <Statistic
-              title="대기중 예약"
-              value={stats?.pendingReservations || 0}
-              prefix={<ClockCircleOutlined />}
-              suffix="건"
-              valueStyle={{ color: '#faad14' }}
-            />
+          <Card size="small" loading={revenueLoading}>
+            <AntTooltip title={`취소수수료: ${(dailyRevenueDetail?.reduce((sum, d) => sum + d.cancelFee, 0) || 0).toLocaleString()}원`}>
+              <Statistic
+                title={
+                  <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                    <CloseCircleOutlined style={{ color: '#ff4d4f' }} />
+                    환불액
+                  </span>
+                }
+                value={dailyRevenueDetail?.reduce((sum, d) => sum + d.refundAmount, 0) || 0}
+                suffix="원"
+                valueStyle={{ color: '#ff4d4f' }}
+                formatter={(value) => Number(value).toLocaleString()}
+              />
+            </AntTooltip>
+            <div style={{ marginTop: 8, fontSize: 12, color: '#999' }}>
+              취소수수료 {(dailyRevenueDetail?.reduce((sum, d) => sum + d.cancelFee, 0) || 0).toLocaleString()}원 별도
+            </div>
           </Card>
         </Col>
-      </Row>
-
-      {/* 상품/회원 지표 */}
-      <Row gutter={[16, 16]} style={{ marginTop: 16 }}>
-        <Col xs={12} sm={6} lg={3}>
-          <Card size="small">
+        <Col xs={24} sm={12} lg={6}>
+          <Card size="small" loading={revenueLoading}>
             <Statistic
-              title="등록 상품"
-              value={stats?.totalProducts || 0}
-              prefix={<ShoppingOutlined />}
-              valueStyle={{ fontSize: 20 }}
+              title={
+                <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                  <CheckCircleOutlined style={{ color: '#52c41a' }} />
+                  순매출
+                </span>
+              }
+              value={dailyRevenueDetail?.reduce((sum, d) => sum + d.netRevenue, 0) || 0}
+              suffix="원"
+              valueStyle={{ color: '#52c41a' }}
+              formatter={(value) => Number(value).toLocaleString()}
             />
-            <div style={{ fontSize: 11, color: '#999' }}>공개 {stats?.activeProducts || 0}</div>
+            <div style={{ marginTop: 8, fontSize: 12, color: '#999' }}>
+              매출액 - 환불액
+            </div>
           </Card>
         </Col>
-        <Col xs={12} sm={6} lg={3}>
-          <Card size="small">
+        <Col xs={24} sm={12} lg={6}>
+          <Card size="small" loading={revenueLoading}>
             <Statistic
-              title="총 회원"
-              value={stats?.totalMembers || 0}
-              prefix={<UserOutlined />}
-              valueStyle={{ fontSize: 20 }}
+              title={
+                <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                  <RiseOutlined style={{ color: '#722ed1' }} />
+                  정산액
+                </span>
+              }
+              value={dailyRevenueDetail?.reduce((sum, d) => sum + d.settlementAmount, 0) || 0}
+              suffix="원"
+              valueStyle={{ color: '#722ed1' }}
+              formatter={(value) => Number(value).toLocaleString()}
             />
-            <div style={{ fontSize: 11, color: '#999' }}>승인 {stats?.approvedMembers || 0}</div>
-          </Card>
-        </Col>
-        <Col xs={12} sm={6} lg={3}>
-          <Card size="small">
-            <Statistic
-              title="신규 가입"
-              value={stats?.newMembersThisMonth || 0}
-              prefix={<UserAddOutlined />}
-              valueStyle={{ fontSize: 20, color: '#722ed1' }}
-            />
-            <div style={{ fontSize: 11, color: '#999' }}>이번 달</div>
+            <div style={{ marginTop: 8, fontSize: 12, color: '#999' }}>
+              플랫폼 수수료 10% 제외
+            </div>
           </Card>
         </Col>
       </Row>
@@ -267,83 +301,141 @@ export function DashboardPage() {
       <Row gutter={[16, 16]} style={{ marginTop: 16 }}>
         {/* 매출 추이 차트 */}
         <Col xs={24} lg={16}>
-          <Card
-            size="small"
-            title="매출 추이"
-            extra={
-              <Segmented
-                size="small"
-                value={chartPeriod}
-                onChange={(value) => setChartPeriod(value as ChartPeriod)}
-                options={[
-                  { label: '7일', value: '7' },
-                  { label: '14일', value: '14' },
-                  { label: '30일', value: '30' },
-                ]}
-              />
-            }
-          >
-            <ResponsiveContainer width="100%" height={280}>
-              <AreaChart data={dailyRevenue || []}>
-                <defs>
-                  <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#1890ff" stopOpacity={0.3} />
-                    <stop offset="95%" stopColor="#1890ff" stopOpacity={0} />
-                  </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                <XAxis dataKey="displayDate" tick={{ fontSize: 11 }} />
-                <YAxis
-                  tick={{ fontSize: 11 }}
-                  tickFormatter={(value) => value >= 10000 ? `${(value / 10000).toFixed(0)}만` : value}
-                />
-                <Tooltip
-                  formatter={(value: number | undefined) => [formatAmount(value || 0), '매출']}
-                  labelFormatter={(label) => `${label}`}
-                />
-                <Area
-                  type="monotone"
-                  dataKey="amount"
-                  stroke="#1890ff"
-                  strokeWidth={2}
-                  fill="url(#colorRevenue)"
-                />
-              </AreaChart>
-            </ResponsiveContainer>
+          <Card size="small" title="매출 추이">
+            {revenueLoading ? (
+              <div style={{ textAlign: 'center', padding: 100 }}>
+                <Spin />
+              </div>
+            ) : (
+              <>
+                {/* 범례 */}
+                <div style={{ display: 'flex', gap: 16, marginBottom: 12, flexWrap: 'wrap' }}>
+                  <span style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 12 }}>
+                    <span style={{ width: 12, height: 3, background: '#1890ff', borderRadius: 2 }} />
+                    매출액
+                  </span>
+                  <AntTooltip title="환불액에는 취소수수료가 제외된 실제 환불 금액입니다">
+                    <span style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 12, cursor: 'help' }}>
+                      <span style={{ width: 12, height: 3, background: '#ff4d4f', borderRadius: 2 }} />
+                      환불액 (취소수수료 별도)
+                    </span>
+                  </AntTooltip>
+                  <span style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 12 }}>
+                    <span style={{ width: 12, height: 3, background: '#52c41a', borderRadius: 2 }} />
+                    순매출
+                  </span>
+                  <span style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 12 }}>
+                    <span style={{ width: 12, height: 3, background: '#722ed1', borderRadius: 2 }} />
+                    정산액
+                  </span>
+                </div>
+                <ResponsiveContainer width="100%" height={260}>
+                  <LineChart data={dailyRevenueDetail || []}>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                    <XAxis
+                      dataKey="displayDate"
+                      tick={{ fontSize: 11 }}
+                      interval={dailyRevenueDetail && dailyRevenueDetail.length > 60 ? Math.floor(dailyRevenueDetail.length / 12) : 'preserveStartEnd'}
+                    />
+                    <YAxis
+                      tick={{ fontSize: 11 }}
+                      tickFormatter={(value) => value >= 10000 ? `${(value / 10000).toFixed(0)}만` : value}
+                    />
+                    <Tooltip
+                      formatter={((value: number | undefined, name: string | undefined) => {
+                        const labels: Record<string, string> = {
+                          revenue: '매출액',
+                          refundAmount: '환불액',
+                          cancelFee: '취소수수료',
+                          netRevenue: '순매출',
+                          settlementAmount: '정산액',
+                        }
+                        return [formatAmount(value || 0), labels[name || ''] || name]
+                      }) as any}
+                      labelFormatter={(label) => `${label}`}
+                      contentStyle={{ fontSize: 12 }}
+                    />
+                    <Line
+                      type="monotone"
+                      dataKey="revenue"
+                      stroke="#1890ff"
+                      strokeWidth={2}
+                      dot={false}
+                      name="revenue"
+                    />
+                    <Line
+                      type="monotone"
+                      dataKey="refundAmount"
+                      stroke="#ff4d4f"
+                      strokeWidth={2}
+                      dot={false}
+                      name="refundAmount"
+                    />
+                    <Line
+                      type="monotone"
+                      dataKey="netRevenue"
+                      stroke="#52c41a"
+                      strokeWidth={2}
+                      dot={false}
+                      name="netRevenue"
+                    />
+                    <Line
+                      type="monotone"
+                      dataKey="settlementAmount"
+                      stroke="#722ed1"
+                      strokeWidth={2}
+                      dot={false}
+                      name="settlementAmount"
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
+              </>
+            )}
           </Card>
         </Col>
 
         {/* 예약 상태 분포 */}
         <Col xs={24} lg={8}>
           <Card size="small" title="예약 상태 분포">
-            <ResponsiveContainer width="100%" height={280}>
-              <PieChart>
-                <Pie
-                  data={statusData?.filter((s) => s.count > 0) || []}
-                  cx="50%"
-                  cy="50%"
-                  innerRadius={50}
-                  outerRadius={80}
-                  paddingAngle={2}
-                  dataKey="count"
-                  nameKey="label"
-                >
-                  {statusData?.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.color} />
-                  ))}
-                </Pie>
-                <Tooltip formatter={(value: number | undefined) => [`${value || 0}건`, '']} />
-                <Legend
-                  layout="horizontal"
-                  verticalAlign="bottom"
-                  wrapperStyle={{ fontSize: 11 }}
-                />
-              </PieChart>
-            </ResponsiveContainer>
-            <div style={{ textAlign: 'center', marginTop: -20 }}>
-              <Text type="secondary" style={{ fontSize: 12 }}>
-                총 {totalReservations}건
-              </Text>
+            <div style={{ position: 'relative' }}>
+              <ResponsiveContainer width="100%" height={280}>
+                <PieChart>
+                  <Pie
+                    data={statusData?.filter((s) => s.count > 0) || []}
+                    cx="50%"
+                    cy="45%"
+                    innerRadius={50}
+                    outerRadius={80}
+                    paddingAngle={2}
+                    dataKey="count"
+                    nameKey="label"
+                  >
+                    {statusData?.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.color} />
+                    ))}
+                  </Pie>
+                  <Tooltip formatter={(value: number | undefined) => [`${value || 0}건`, '']} />
+                  <Legend
+                    layout="horizontal"
+                    verticalAlign="bottom"
+                    wrapperStyle={{ fontSize: 11, paddingTop: 16 }}
+                  />
+                </PieChart>
+              </ResponsiveContainer>
+              {/* 파이차트 중앙에 총 건수 표시 */}
+              <div style={{
+                position: 'absolute',
+                top: '45%',
+                left: '50%',
+                transform: 'translate(-50%, -50%)',
+                textAlign: 'center',
+                pointerEvents: 'none',
+              }}>
+                <div style={{ fontSize: 20, fontWeight: 600, color: '#262626' }}>
+                  {totalReservations}
+                </div>
+                <div style={{ fontSize: 11, color: '#8c8c8c' }}>총 건수</div>
+              </div>
             </div>
           </Card>
         </Col>

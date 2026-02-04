@@ -8,6 +8,8 @@ import type {
   CommissionHistory,
   VendorFilter,
   PaginationParams,
+  BusinessOwnerDocument,
+  BusinessOwnerDocumentCreateInput,
 } from '@/types'
 
 // 사업주 목록 조회
@@ -313,4 +315,58 @@ export async function upsertVendorsBulk(
   }
 
   return results
+}
+
+// 사업주 문서 목록 조회
+// TODO: business_owner_documents 테이블 생성 후 활성화
+export async function getVendorDocuments(vendorId: string): Promise<BusinessOwnerDocument[]> {
+  const { data, error } = await (supabase as any)
+    .from('business_owner_documents')
+    .select('*')
+    .eq('business_owner_id', vendorId)
+    .order('document_type')
+    .order('sort_order')
+
+  if (error) {
+    throw new Error(error.message)
+  }
+
+  return (data as BusinessOwnerDocument[]) || []
+}
+
+// 사업주 문서 추가
+export async function addVendorDocument(
+  input: BusinessOwnerDocumentCreateInput
+): Promise<BusinessOwnerDocument> {
+  const { data, error } = await (supabase as any)
+    .from('business_owner_documents')
+    .insert({
+      business_owner_id: input.business_owner_id,
+      document_type: input.document_type,
+      file_name: input.file_name,
+      file_url: input.file_url,
+      file_size: input.file_size || null,
+      mime_type: input.mime_type || null,
+      sort_order: input.sort_order || 0,
+    })
+    .select()
+    .single()
+
+  if (error) {
+    throw new Error(error.message)
+  }
+
+  return data as BusinessOwnerDocument
+}
+
+// 사업주 문서 삭제
+export async function deleteVendorDocumentRecord(documentId: string): Promise<void> {
+  const { error } = await (supabase as any)
+    .from('business_owner_documents')
+    .delete()
+    .eq('id', documentId)
+
+  if (error) {
+    throw new Error(error.message)
+  }
 }

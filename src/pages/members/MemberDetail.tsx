@@ -17,6 +17,7 @@ import {
   Popconfirm,
   Image,
   Select,
+  Typography,
 } from 'antd'
 import {
   ArrowLeftOutlined,
@@ -24,6 +25,9 @@ import {
   HomeOutlined,
   UserOutlined,
   DeleteOutlined,
+  FileOutlined,
+  FilePdfOutlined,
+  FileImageOutlined,
 } from '@ant-design/icons'
 import {
   getDaycare,
@@ -31,11 +35,12 @@ import {
   getDaycareMemos,
   addDaycareMemo,
   deleteDaycareMemo,
+  getDaycareDocuments,
 } from '@/services/daycareService'
 import { formatDateTime, formatPhoneNumber, formatBusinessNumber } from '@/utils/format'
 import { DAYCARE_STATUS_LABEL, DAYCARE_STATUS_COLOR } from '@/constants'
 import { useAuthStore } from '@/stores/authStore'
-import type { DaycareStatus } from '@/types'
+import type { DaycareStatus, DaycareDocument } from '@/types'
 
 const { TextArea } = Input
 
@@ -62,6 +67,13 @@ export function MemberDetailPage() {
   const { data: memos = [] } = useQuery({
     queryKey: ['daycare-memos', id],
     queryFn: () => getDaycareMemos(id!),
+    enabled: !!id,
+  })
+
+  // 문서 목록 조회
+  const { data: documents = [] } = useQuery({
+    queryKey: ['daycareDocuments', id],
+    queryFn: () => getDaycareDocuments(id!),
     enabled: !!id,
   })
 
@@ -257,16 +269,58 @@ export function MemberDetailPage() {
             </div>
           )}
 
-          <h4 style={{ marginTop: 24, marginBottom: 12 }}>인가증 파일</h4>
-          {daycare.license_file ? (
-            <Image
-              src={daycare.license_file}
-              alt="인가증"
-              style={{ maxWidth: 400, maxHeight: 300 }}
-              fallback="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAMIAAADDCAYAAADQvc6UAAABRWlDQ1BJQ0MgUHJvZmlsZQAAKJFjYGASSSwoyGFhYGDIzSspCnJ3UoiIjFJgf8LAwSDCIMogwMCcmFxc4BgQ4ANUwgCjUcG3awyMIPqyLsis7PPOq3QdDFcvjV3jOD1boQVTPQrgSkktTgbSf4A4LbmgqISBgTEFyFYuLykAsTuAbJEioKOA7DkgdjqEvQHEToKwj4DVhAQ5A9k3gGyB5IxEoBmML4BsnSQk8XQkNtReEOBxcfXxUQg1Mjc0dyHgXNJBSWpFCYh2zi+oLMpMzyhRcASGUqqCZ16yno6CkYGRAQMDKMwhqj/fAIcloxgHQqxAjIHBEugw5sUIsSQpBobtQPdLciLEVJYzMPBHMDBsayhILEqEO4DxG0txmrERhM29nYGBddr//5/DGRjYNRkY/l7////39v///y4Dmn+LgesqAsqVAAAAPklEQVR4nO3BMQEAAADCoPVP7WULoAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABeDVYABQC9SnAAAAASUVORK5CYII="
+          <h4 style={{ marginTop: 24, marginBottom: 12 }}>인가증 파일 ({documents.length}개)</h4>
+          <div style={{ marginBottom: 8 }}>
+            <Button size="small" onClick={() => navigate(`/members/${id}/edit`)}>
+              파일 관리
+            </Button>
+          </div>
+          {documents.length > 0 ? (
+            <List
+              size="small"
+              bordered
+              dataSource={documents}
+              renderItem={(doc: DaycareDocument) => (
+                <List.Item>
+                  <Space>
+                    {doc.mime_type?.includes('pdf') ? (
+                      <FilePdfOutlined style={{ color: '#ff4d4f' }} />
+                    ) : doc.mime_type?.includes('image') ? (
+                      <FileImageOutlined style={{ color: '#1890ff' }} />
+                    ) : (
+                      <FileOutlined />
+                    )}
+                    <a href={doc.file_url} target="_blank" rel="noopener noreferrer">
+                      {doc.file_name}
+                    </a>
+                    {doc.file_size && (
+                      <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+                        ({(doc.file_size / 1024 / 1024).toFixed(2)} MB)
+                      </Typography.Text>
+                    )}
+                  </Space>
+                </List.Item>
+              )}
             />
           ) : (
-            <span style={{ color: '#999' }}>파일 없음</span>
+            <div style={{ padding: 16, background: '#fafafa', borderRadius: 6 }}>
+              <Typography.Text type="secondary">등록된 파일이 없습니다</Typography.Text>
+            </div>
+          )}
+
+          {/* 레거시 license_file 필드 (기존 데이터 호환) */}
+          {daycare.license_file && documents.length === 0 && (
+            <div style={{ marginTop: 12 }}>
+              <Typography.Text type="secondary" style={{ fontSize: 12 }}>기존 파일:</Typography.Text>
+              <div style={{ marginTop: 4 }}>
+                <Image
+                  src={daycare.license_file}
+                  alt="인가증"
+                  style={{ maxWidth: 400, maxHeight: 300 }}
+                  fallback="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAMIAAADDCAYAAADQvc6UAAABRWlDQ1BJQ0MgUHJvZmlsZQAAKJFjYGASSSwoyGFhYGDIzSspCnJ3UoiIjFJgf8LAwSDCIMogwMCcmFxc4BgQ4ANUwgCjUcG3awyMIPqyLsis7PPOq3QdDFcvjV3jOD1boQVTPQrgSkktTgbSf4A4LbmgqISBgTEFyFYuLykAsTuAbJEioKOA7DkgdjqEvQHEToKwj4DVhAQ5A9k3gGyB5IxEoBmML4BsnSQk8XQkNtReEOBxcfXxUQg1Mjc0dyHgXNJBSWpFCYh2zi+oLMpMzyhRcASGUqqCZ16yno6CkYGRAQMDKMwhqj/fAIcloxgHQqxAjIHBEugw5sUIsSQpBobtQPdLciLEVJYzMPBHMDBsayhILEqEO4DxG0txmrERhM29nYGBddr//5/DGRjYNRkY/l7////39v///y4Dmn+LgesqAsqVAAAAPklEQVR4nO3BMQEAAADCoPVP7WULoAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABeDVYABQC9SnAAAAASUVORK5CYII="
+                />
+              </div>
+            </div>
           )}
         </>
       ),

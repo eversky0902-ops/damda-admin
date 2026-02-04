@@ -54,6 +54,7 @@ export function MemberEditPage() {
       <DaycareForm
         mode="edit"
         initialValues={daycare}
+        daycareId={id}
         onSubmit={(values) => updateMutation.mutate(values as DaycareUpdateInput)}
         onCancel={() => navigate(`/members/${id}`)}
         isSubmitting={updateMutation.isPending}

@@ -1,9 +1,12 @@
-import { useState } from 'react'
-import { Form, Input, InputNumber, Button, Card, Typography, Row, Col, Modal } from 'antd'
-import { ArrowLeftOutlined, HomeOutlined, FileTextOutlined, SearchOutlined } from '@ant-design/icons'
+import { useState, useEffect } from 'react'
+import { Form, Input, InputNumber, Button, Card, Typography, Row, Col, Modal, Upload, List, Space, Popconfirm, message, Spin } from 'antd'
+import { ArrowLeftOutlined, HomeOutlined, FileTextOutlined, SearchOutlined, UploadOutlined, DeleteOutlined, FileOutlined, FilePdfOutlined, FileImageOutlined } from '@ant-design/icons'
 import { DaumPostcodeEmbed, type Address } from 'react-daum-postcode'
+import type { RcFile } from 'antd/es/upload'
 
-import type { Daycare } from '@/types'
+import { uploadDaycareDocument, deleteDaycareDocument } from '@/services/storageService'
+import { getDaycareDocuments, addDaycareDocument, deleteDaycareDocumentRecord } from '@/services/daycareService'
+import type { Daycare, DaycareDocument } from '@/types'
 
 const { Text } = Typography
 
@@ -36,22 +39,111 @@ function SectionHeader({ icon, title, description }: { icon: React.ReactNode; ti
 interface DaycareFormProps {
   mode: 'create' | 'edit'
   initialValues?: Partial<Daycare>
+  daycareId?: string
   onSubmit: (values: Record<string, unknown>) => void
   onCancel: () => void
   isSubmitting?: boolean
 }
 
+function getFileIcon(mimeType?: string | null) {
+  if (!mimeType) return <FileOutlined />
+  if (mimeType.includes('pdf')) return <FilePdfOutlined style={{ color: '#ff4d4f' }} />
+  if (mimeType.includes('image')) return <FileImageOutlined style={{ color: '#1890ff' }} />
+  return <FileOutlined />
+}
+
+function formatFileSize(bytes?: number | null): string {
+  if (!bytes) return ''
+  if (bytes < 1024) return `${bytes} B`
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
+}
+
 export function DaycareForm({
   mode,
   initialValues,
+  daycareId,
   onSubmit,
   onCancel,
   isSubmitting = false,
 }: DaycareFormProps) {
   const [form] = Form.useForm()
   const [isPostcodeOpen, setIsPostcodeOpen] = useState(false)
+  const [documents, setDocuments] = useState<DaycareDocument[]>([])
+  const [documentsLoading, setDocumentsLoading] = useState(false)
+  const [uploading, setUploading] = useState(false)
 
   const isEdit = mode === 'edit'
+
+  // 문서 목록 로드
+  useEffect(() => {
+    if (isEdit && daycareId) {
+      loadDocuments()
+    }
+  }, [isEdit, daycareId])
+
+  const loadDocuments = async () => {
+    if (!daycareId) return
+    setDocumentsLoading(true)
+    try {
+      const docs = await getDaycareDocuments(daycareId)
+      setDocuments(docs)
+    } catch (error) {
+      console.error('Failed to load documents:', error)
+    } finally {
+      setDocumentsLoading(false)
+    }
+  }
+
+  const handleDocumentUpload = async (file: RcFile) => {
+    if (!daycareId) {
+      message.error('먼저 저장 후 파일을 업로드해주세요')
+      return false
+    }
+
+    // 파일 검증
+    const isAllowedType = file.name.match(/\.(jpg|jpeg|png|gif|pdf)$/i)
+    if (!isAllowedType) {
+      message.error('JPG, PNG, GIF, PDF 파일만 업로드 가능합니다')
+      return false
+    }
+    const isLt20M = file.size / 1024 / 1024 < 20
+    if (!isLt20M) {
+      message.error('파일 크기는 20MB 이하여야 합니다')
+      return false
+    }
+
+    setUploading(true)
+    try {
+      const result = await uploadDaycareDocument(file, daycareId, 'license')
+      await addDaycareDocument({
+        daycare_id: daycareId,
+        document_type: 'license',
+        file_name: result.fileName,
+        file_url: result.url,
+        file_size: result.fileSize,
+        mime_type: result.mimeType,
+      })
+      message.success('파일이 업로드되었습니다')
+      await loadDocuments()
+    } catch (error) {
+      message.error('업로드에 실패했습니다')
+    } finally {
+      setUploading(false)
+    }
+    return false
+  }
+
+  const handleDocumentDelete = async (doc: DaycareDocument) => {
+    try {
+      await deleteDaycareDocument(doc.file_url)
+      await deleteDaycareDocumentRecord(doc.id)
+      message.success('파일이 삭제되었습니다')
+      await loadDocuments()
+    } catch (error) {
+      message.error('삭제에 실패했습니다')
+    }
+  }
 
   const handlePostcodeComplete = (data: Address) => {
     form.setFieldsValue({
@@ -251,13 +343,83 @@ export function DaycareForm({
             </Col>
           </Row>
 
-          <Form.Item
-            name="license_file"
-            label="인가증 파일"
-            extra="인가증 파일 URL (이미지 또는 PDF)"
-          >
-            <Input placeholder="https://..." style={{ width: 480 }} />
-          </Form.Item>
+          {isEdit && daycareId ? (
+            <div style={{ marginTop: 16 }}>
+              <Text strong style={{ display: 'block', marginBottom: 8 }}>인가증 파일</Text>
+              <Text type="secondary" style={{ display: 'block', marginBottom: 12, fontSize: 13 }}>
+                어린이집 인가증 사본을 업로드해주세요. 여러 파일 업로드 가능합니다.
+              </Text>
+
+              {documentsLoading ? (
+                <div style={{ textAlign: 'center', padding: 24 }}>
+                  <Spin />
+                </div>
+              ) : (
+                <>
+                  <div style={{ marginBottom: 12 }}>
+                    <Upload
+                      showUploadList={false}
+                      beforeUpload={handleDocumentUpload}
+                      accept=".jpg,.jpeg,.png,.gif,.pdf"
+                      disabled={uploading}
+                    >
+                      <Button icon={<UploadOutlined />} loading={uploading}>
+                        파일 업로드
+                      </Button>
+                    </Upload>
+                    <Text type="secondary" style={{ marginLeft: 8, fontSize: 12 }}>
+                      JPG, PNG, GIF, PDF (최대 20MB)
+                    </Text>
+                  </div>
+
+                  {documents.length > 0 ? (
+                    <List
+                      size="small"
+                      bordered
+                      dataSource={documents}
+                      renderItem={(doc) => (
+                        <List.Item
+                          actions={[
+                            <Popconfirm
+                              key="delete"
+                              title="파일을 삭제하시겠습니까?"
+                              onConfirm={() => handleDocumentDelete(doc)}
+                              okText="삭제"
+                              cancelText="취소"
+                            >
+                              <Button type="text" size="small" danger icon={<DeleteOutlined />} />
+                            </Popconfirm>,
+                          ]}
+                        >
+                          <Space>
+                            {getFileIcon(doc.mime_type)}
+                            <a href={doc.file_url} target="_blank" rel="noopener noreferrer">
+                              {doc.file_name}
+                            </a>
+                            {doc.file_size && (
+                              <Text type="secondary" style={{ fontSize: 12 }}>
+                                ({formatFileSize(doc.file_size)})
+                              </Text>
+                            )}
+                          </Space>
+                        </List.Item>
+                      )}
+                    />
+                  ) : (
+                    <div style={{ padding: 24, textAlign: 'center', background: '#fafafa', borderRadius: 6 }}>
+                      <Text type="secondary">등록된 파일이 없습니다</Text>
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+          ) : (
+            <div style={{ marginTop: 16, padding: 16, background: '#fafafa', borderRadius: 6 }}>
+              <Text type="secondary">
+                인가증 파일은 어린이집 등록 완료 후 수정 화면에서 업로드할 수 있습니다.
+              </Text>
+            </div>
+          )}
         </Card>
 
         <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>

@@ -209,6 +209,9 @@ export function ProductDetailPage() {
             </Descriptions.Item>
             <Descriptions.Item label="사업주">
               {product.business_owner?.name || '-'}
+              {(product.business_owner as { status?: string } | undefined)?.status === 'inactive' && (
+                <Tag color="default" style={{ marginLeft: 8 }}>비활성</Tag>
+              )}
             </Descriptions.Item>
             <Descriptions.Item label="카테고리">{product.category?.name || '-'}</Descriptions.Item>
             <Descriptions.Item label="정가">
