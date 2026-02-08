@@ -44,6 +44,110 @@ export const PRODUCT_EXCEL_COLUMNS = [
   { key: 'created_at', header: '등록일' },
 ] as const
 
+// 회원(어린이집) 엑셀 다운로드용 컬럼 정의
+export const DAYCARE_EXCEL_COLUMNS = [
+  { key: 'name', header: '어린이집명' },
+  { key: 'email', header: '이메일' },
+  { key: 'representative', header: '대표자' },
+  { key: 'contact_name', header: '담당자' },
+  { key: 'contact_phone', header: '연락처' },
+  { key: 'business_number', header: '사업자번호' },
+  { key: 'license_number', header: '인가번호' },
+  { key: 'address', header: '주소' },
+  { key: 'address_detail', header: '상세주소' },
+  { key: 'zipcode', header: '우편번호' },
+  { key: 'tel', header: '전화번호' },
+  { key: 'capacity', header: '정원' },
+  { key: 'status', header: '상태' },
+  { key: 'created_at', header: '가입일' },
+] as const
+
+// 회원 데이터 엑셀 형식으로 변환
+const DAYCARE_STATUS_KR: Record<string, string> = {
+  pending: '가입대기',
+  requested: '승인요청',
+  approved: '승인완료',
+  rejected: '승인거절',
+  revision_required: '보완필요',
+}
+
+export function formatDaycaresForExcel(daycares: DaycareForExcel[]) {
+  return daycares.map((d) => ({
+    ...d,
+    status: DAYCARE_STATUS_KR[d.status] || d.status,
+    capacity: d.capacity || '',
+  }))
+}
+
+interface DaycareForExcel {
+  name: string
+  email: string
+  representative?: string
+  contact_name: string
+  contact_phone: string
+  business_number?: string
+  license_number: string
+  address: string
+  address_detail?: string
+  zipcode?: string
+  tel?: string
+  capacity?: number | null
+  status: string
+  created_at: string
+}
+
+// 예약 엑셀 다운로드용 컬럼 정의
+export const RESERVATION_EXCEL_COLUMNS = [
+  { key: 'reservation_number', header: '예약번호' },
+  { key: 'daycare_name', header: '어린이집' },
+  { key: 'product_name', header: '상품명' },
+  { key: 'business_owner_name', header: '사업주' },
+  { key: 'reserved_date', header: '예약일' },
+  { key: 'reserved_time', header: '예약시간' },
+  { key: 'participant_count', header: '인원' },
+  { key: 'total_amount', header: '결제금액' },
+  { key: 'status', header: '상태' },
+  { key: 'created_at', header: '예약신청일' },
+] as const
+
+// 예약 데이터 엑셀 형식으로 변환
+const RESERVATION_STATUS_KR: Record<string, string> = {
+  pending: '결제대기',
+  paid: '결제완료',
+  confirmed: '확정',
+  completed: '이용완료',
+  cancelled: '취소됨',
+  refunded: '환불됨',
+}
+
+export function formatReservationsForExcel(reservations: ReservationForExcel[]) {
+  return reservations.map((r) => ({
+    reservation_number: r.reservation_number,
+    daycare_name: r.daycare?.name || '',
+    product_name: r.product?.name || '',
+    business_owner_name: r.business_owner?.name || '',
+    reserved_date: r.reserved_date,
+    reserved_time: r.reserved_time || '',
+    participant_count: r.participant_count,
+    total_amount: r.total_amount,
+    status: RESERVATION_STATUS_KR[r.status] || r.status,
+    created_at: r.created_at,
+  }))
+}
+
+interface ReservationForExcel {
+  reservation_number: string
+  reserved_date: string
+  reserved_time?: string | null
+  participant_count: number
+  total_amount: number
+  status: string
+  created_at: string
+  daycare?: { name: string }
+  product?: { name: string }
+  business_owner?: { name: string }
+}
+
 // 결제 엑셀 다운로드용 컬럼 정의
 export const PAYMENT_EXCEL_COLUMNS = [
   { key: 'id', header: '결제ID' },
@@ -59,6 +163,59 @@ export const PAYMENT_EXCEL_COLUMNS = [
   { key: 'paid_at', header: '결제완료일시' },
   { key: 'created_at', header: '결제요청일시' },
 ] as const
+
+// 정산 결제내역 엑셀 다운로드용 컬럼 정의
+export const SETTLEMENT_PAYMENT_EXCEL_COLUMNS = [
+  { key: 'reservation_number', header: '예약번호' },
+  { key: 'reserved_date', header: '예약일' },
+  { key: 'daycare_name', header: '어린이집' },
+  { key: 'product_name', header: '상품' },
+  { key: 'amount', header: '결제금액' },
+  { key: 'payment_status', header: '결제상태' },
+  { key: 'reservation_status', header: '예약상태' },
+  { key: 'paid_at', header: '결제일시' },
+] as const
+
+// 정산 결제내역 데이터 엑셀 형식으로 변환
+export function formatSettlementPaymentsForExcel(payments: SettlementPaymentForExcel[]) {
+  const statusLabels: Record<string, string> = {
+    paid: '완료',
+    cancelled: '취소',
+    pending: '대기',
+    failed: '실패',
+  }
+  const reservationStatusLabels: Record<string, string> = {
+    confirmed: '확정',
+    completed: '완료',
+    cancelled: '취소',
+    refunded: '환불',
+    pending: '대기',
+    paid: '결제완료',
+  }
+  return payments.map((p) => ({
+    reservation_number: p.reservation?.reservation_number || '',
+    reserved_date: p.reservation?.reserved_date || '',
+    daycare_name: p.reservation?.daycare?.name || '',
+    product_name: p.reservation?.product?.name || '',
+    amount: p.amount,
+    payment_status: statusLabels[p.status] || p.status,
+    reservation_status: reservationStatusLabels[p.reservation?.status || ''] || p.reservation?.status || '',
+    paid_at: p.paid_at || '',
+  }))
+}
+
+interface SettlementPaymentForExcel {
+  amount: number
+  status: string
+  paid_at: string | null
+  reservation?: {
+    reservation_number?: string
+    reserved_date?: string
+    status?: string
+    daycare?: { name: string }
+    product?: { name: string }
+  }
+}
 
 // 사업주 엑셀 업로드용 컬럼 정의 (필수 필드)
 export const VENDOR_UPLOAD_COLUMNS = [

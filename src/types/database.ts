@@ -571,6 +571,77 @@ export type Database = {
           },
         ]
       }
+      partner_inquiries: {
+        Row: {
+          address: string | null
+          address_detail: string | null
+          business_number: string
+          contact_name: string
+          contact_phone: string
+          created_at: string
+          description: string | null
+          email: string
+          id: string
+          name: string
+          program_types: string | null
+          rejection_reason: string | null
+          representative: string
+          reviewed_at: string | null
+          reviewed_by: string | null
+          status: string
+          updated_at: string
+          zipcode: string | null
+        }
+        Insert: {
+          address?: string | null
+          address_detail?: string | null
+          business_number: string
+          contact_name: string
+          contact_phone: string
+          created_at?: string
+          description?: string | null
+          email: string
+          id?: string
+          name: string
+          program_types?: string | null
+          rejection_reason?: string | null
+          representative: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          updated_at?: string
+          zipcode?: string | null
+        }
+        Update: {
+          address?: string | null
+          address_detail?: string | null
+          business_number?: string
+          contact_name?: string
+          contact_phone?: string
+          created_at?: string
+          description?: string | null
+          email?: string
+          id?: string
+          name?: string
+          program_types?: string | null
+          rejection_reason?: string | null
+          representative?: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          updated_at?: string
+          zipcode?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "partner_inquiries_reviewed_by_fkey"
+            columns: ["reviewed_by"]
+            isOneToOne: false
+            referencedRelation: "admins"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       notices: {
         Row: {
           content: string

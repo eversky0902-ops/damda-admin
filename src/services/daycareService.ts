@@ -50,6 +50,20 @@ export async function getDaycares({
   }
 }
 
+// 어린이집 전체 목록 조회 (엑셀 다운로드용)
+export async function getAllDaycares(): Promise<Daycare[]> {
+  const { data, error } = await supabase
+    .from('daycares')
+    .select('*')
+    .order('created_at', { ascending: false })
+
+  if (error) {
+    throw new Error(error.message)
+  }
+
+  return data as Daycare[]
+}
+
 // 어린이집 생성
 export async function createDaycare(input: DaycareCreateInput): Promise<Daycare> {
   const { data, error } = await supabase
@@ -69,7 +83,7 @@ export async function createDaycare(input: DaycareCreateInput): Promise<Daycare>
       zipcode: input.zipcode || null,
       tel: input.tel || null,
       capacity: input.capacity || null,
-      status: 'requested',
+      status: 'approved',
     })
     .select()
     .single()

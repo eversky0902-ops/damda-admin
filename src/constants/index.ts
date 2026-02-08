@@ -309,3 +309,14 @@ export const LEGAL_DOCUMENT_VISIBILITY_COLOR: Record<string, string> = {
   visible: 'green',
   hidden: 'default',
 }
+
+// 입점문의 상태 라벨
+export const PARTNER_INQUIRY_STATUS_LABEL: Record<string, string> = {
+  pending: '대기중',
+  approved: '처리완료',
+}
+
+export const PARTNER_INQUIRY_STATUS_COLOR: Record<string, string> = {
+  pending: 'warning',
+  approved: 'success',
+}

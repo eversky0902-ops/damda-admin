@@ -7,7 +7,6 @@ import { DashboardPage } from '@/pages/Dashboard'
 import { LoginPage } from '@/pages/Login'
 import { MemberListPage } from '@/pages/members/MemberList'
 import { MemberDetailPage } from '@/pages/members/MemberDetail'
-import { MemberCreatePage } from '@/pages/members/MemberCreate'
 import { MemberEditPage } from '@/pages/members/MemberEdit'
 import { VendorsPage } from '@/pages/Vendors'
 import { VendorDetailPage } from '@/pages/Vendors/VendorDetail'
@@ -31,6 +30,11 @@ import { SettlementsPage } from '@/pages/Settlements'
 import { SettlementDetailPage } from '@/pages/Settlements/SettlementDetail'
 import { SettlementCreatePage } from '@/pages/Settlements/SettlementCreate'
 import { SettlementEditPage } from '@/pages/Settlements/SettlementEdit'
+import { PartnerInquiriesPage } from '@/pages/PartnerInquiries'
+import { PartnerInquiryDetailPage } from '@/pages/PartnerInquiries/PartnerInquiryDetail'
+
+// Stats Pages
+import { RegionalMonthlyStatsPage } from '@/pages/Stats/RegionalMonthlyStats'
 
 // Content Pages
 import { NoticesPage } from '@/pages/content/Notices'
@@ -56,6 +60,7 @@ import { AdBannerEditPage } from '@/pages/content/AdBanners/AdBannerEdit'
 import { LegalDocumentsPage } from '@/pages/content/LegalDocuments'
 import { LegalDocumentDetailPage } from '@/pages/content/LegalDocuments/LegalDocumentDetail'
 import { LegalDocumentCreatePage } from '@/pages/content/LegalDocuments/LegalDocumentCreate'
+import { LegalDocumentEditPage } from '@/pages/content/LegalDocuments/LegalDocumentEdit'
 
 // Settings Pages
 import { SettingsPage } from '@/pages/settings'
@@ -89,10 +94,6 @@ export const router = createBrowserRouter([
       {
         path: 'members',
         element: <MemberListPage />,
-      },
-      {
-        path: 'members/new',
-        element: <MemberCreatePage />,
       },
       {
         path: 'members/:id',
@@ -191,6 +192,20 @@ export const router = createBrowserRouter([
         path: 'settlements/:id/edit',
         element: <SettlementEditPage />,
       },
+      // Partner Inquiries
+      {
+        path: 'partner-inquiries',
+        element: <PartnerInquiriesPage />,
+      },
+      {
+        path: 'partner-inquiries/:id',
+        element: <PartnerInquiryDetailPage />,
+      },
+      // Stats
+      {
+        path: 'stats/regional',
+        element: <RegionalMonthlyStatsPage />,
+      },
       // Content - Notices
       {
         path: 'content/notices',
@@ -288,6 +303,10 @@ export const router = createBrowserRouter([
       {
         path: 'content/legal-documents/:id',
         element: <LegalDocumentDetailPage />,
+      },
+      {
+        path: 'content/legal-documents/:id/edit',
+        element: <LegalDocumentEditPage />,
       },
       // Settings
       {

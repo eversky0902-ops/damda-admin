@@ -37,7 +37,7 @@ import {
   deleteDaycareMemo,
   getDaycareDocuments,
 } from '@/services/daycareService'
-import { formatDateTime, formatPhoneNumber, formatBusinessNumber } from '@/utils/format'
+import { formatDateTime, formatPhoneNumber } from '@/utils/format'
 import { DAYCARE_STATUS_LABEL, DAYCARE_STATUS_COLOR } from '@/constants'
 import { useAuthStore } from '@/stores/authStore'
 import type { DaycareStatus, DaycareDocument } from '@/types'
@@ -198,15 +198,17 @@ export function MemberDetailPage() {
             </Descriptions.Item>
             <Descriptions.Item label="이메일">{daycare.email}</Descriptions.Item>
             <Descriptions.Item label="사업자등록번호">
-              {formatBusinessNumber(daycare.business_number)}
+              {daycare.business_number || '-'}
             </Descriptions.Item>
             <Descriptions.Item label="대표자">{daycare.representative || '-'}</Descriptions.Item>
             <Descriptions.Item label="담당자">{daycare.contact_name}</Descriptions.Item>
             <Descriptions.Item label="담당자 연락처">
               {formatPhoneNumber(daycare.contact_phone)}
             </Descriptions.Item>
-            <Descriptions.Item label="전화번호">{daycare.tel || '-'}</Descriptions.Item>
-            <Descriptions.Item label="인가번호">{daycare.license_number}</Descriptions.Item>
+            <Descriptions.Item label="전화번호">
+              {formatPhoneNumber(daycare.tel)}
+            </Descriptions.Item>
+            <Descriptions.Item label="인가번호">{daycare.license_number || '-'}</Descriptions.Item>
             <Descriptions.Item label="정원">
               {daycare.capacity ? `${daycare.capacity}명` : '-'}
             </Descriptions.Item>

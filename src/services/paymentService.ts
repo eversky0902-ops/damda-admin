@@ -25,6 +25,7 @@ export interface PaymentFilter {
   payment_method?: string | 'all'
   pg_provider?: string | 'all'
   search?: string
+  search_type?: 'daycare' | 'product'
   date_from?: string
   date_to?: string
 }
@@ -33,7 +34,7 @@ export interface PaymentFilter {
 export async function getPayments(
   params: PaginationParams & PaymentFilter
 ): Promise<{ data: PaymentWithDetails[]; total: number }> {
-  const { page, pageSize, status, payment_method, pg_provider, search, date_from, date_to } = params
+  const { page, pageSize, status, payment_method, pg_provider, search, search_type = 'daycare', date_from, date_to } = params
   const from = (page - 1) * pageSize
   const to = from + pageSize - 1
 
@@ -78,9 +79,35 @@ export async function getPayments(
     query = query.lte('created_at', `${date_to}T23:59:59`)
   }
 
-  // 검색 (PG TID)
+  // 검색 (어린이집명 또는 상품명)
   if (search) {
-    query = query.or(`pg_tid.ilike.%${search}%`)
+    if (search_type === 'product') {
+      // 상품명으로 reservation_id 목록 조회
+      const { data: matchedReservations } = await supabase
+        .from('reservations')
+        .select('id, product:products!inner(name)')
+        .ilike('products.name', `%${search}%`)
+
+      if (matchedReservations && matchedReservations.length > 0) {
+        const reservationIds = matchedReservations.map((r) => r.id)
+        query = query.in('reservation_id', reservationIds)
+      } else {
+        return { data: [], total: 0 }
+      }
+    } else {
+      // 어린이집명으로 reservation_id 목록 조회
+      const { data: matchedReservations } = await supabase
+        .from('reservations')
+        .select('id, daycare:daycares!inner(name)')
+        .ilike('daycares.name', `%${search}%`)
+
+      if (matchedReservations && matchedReservations.length > 0) {
+        const reservationIds = matchedReservations.map((r) => r.id)
+        query = query.in('reservation_id', reservationIds)
+      } else {
+        return { data: [], total: 0 }
+      }
+    }
   }
 
   // 정렬 및 페이지네이션

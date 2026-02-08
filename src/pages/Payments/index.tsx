@@ -27,17 +27,19 @@ export function PaymentsPage() {
   const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE)
   const [search, setSearch] = useState('')
   const [searchInput, setSearchInput] = useState('')
+  const [searchType, setSearchType] = useState<'daycare' | 'product'>('daycare')
   const [statusFilter, setStatusFilter] = useState<PaymentStatusType | 'all'>('all')
   const [methodFilter, setMethodFilter] = useState<string | 'all'>('all')
   const [dateRange, setDateRange] = useState<[dayjs.Dayjs | null, dayjs.Dayjs | null] | null>(null)
 
   const { data, isLoading } = useQuery({
-    queryKey: ['payments', page, pageSize, search, statusFilter, methodFilter, dateRange],
+    queryKey: ['payments', page, pageSize, search, searchType, statusFilter, methodFilter, dateRange],
     queryFn: () =>
       getPayments({
         page,
         pageSize,
         search,
+        search_type: searchType,
         status: statusFilter,
         payment_method: methodFilter,
         date_from: dateRange?.[0]?.format(DATE_FORMAT),
@@ -246,12 +248,26 @@ export function PaymentsPage() {
         borderRadius: 6,
         flexWrap: 'wrap',
       }}>
+        <Select
+          value={searchType}
+          onChange={(value) => {
+            setSearchType(value)
+            setSearchInput('')
+            setSearch('')
+            setPage(1)
+          }}
+          style={{ width: 120 }}
+          options={[
+            { value: 'daycare', label: '어린이집명' },
+            { value: 'product', label: '상품명' },
+          ]}
+        />
         <Input
-          placeholder="PG TID 검색"
+          placeholder={searchType === 'daycare' ? '어린이집명 검색' : '상품명 검색'}
           value={searchInput}
           onChange={(e) => setSearchInput(e.target.value)}
           onPressEnter={handleSearch}
-          style={{ width: 200 }}
+          style={{ width: 240 }}
           prefix={<SearchOutlined style={{ color: '#bfbfbf' }} />}
         />
         <Select

@@ -438,12 +438,16 @@ export interface ReviewImage {
   created_at: string
 }
 
+// 리뷰 검색 타입
+export type ReviewSearchType = 'vendor' | 'daycare' | 'content'
+
 // 리뷰 검색 필터
 export interface ReviewFilter {
   status?: 'all' | 'visible' | 'hidden'
   featured?: 'all' | 'featured' | 'normal'
   rating?: number | 'all'
   search?: string
+  search_type?: ReviewSearchType
 }
 
 // 예약 상태 타입 (DB 스키마 기준)
@@ -808,6 +812,7 @@ export type AdminLogTargetType =
   | 'ad_banner'
   | 'popup'
   | 'inquiry'
+  | 'partner_inquiry'
   | 'site_settings'
 
 export interface AdminLog {
@@ -920,4 +925,38 @@ export interface DaycareDocumentCreateInput {
   file_size?: number
   mime_type?: string
   sort_order?: number
+}
+
+// 입점문의 상태 타입
+export type PartnerInquiryStatus = 'pending' | 'approved'
+
+// 입점문의 타입
+export interface PartnerInquiry {
+  id: string
+  name: string
+  business_number: string
+  representative: string
+  contact_name: string
+  contact_phone: string
+  email: string
+  zipcode: string | null
+  address: string | null
+  address_detail: string | null
+  program_types: string | null
+  description: string | null
+  status: PartnerInquiryStatus
+  memo: string | null
+  reviewed_by: string | null
+  reviewed_at: string | null
+  created_at: string
+  updated_at: string
+  admin?: {
+    name: string
+  }
+}
+
+// 입점문의 검색 필터
+export interface PartnerInquiryFilter {
+  status?: PartnerInquiryStatus | 'all'
+  search?: string
 }

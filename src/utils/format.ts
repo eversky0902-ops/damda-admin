@@ -31,12 +31,3 @@ export const formatPhoneNumber = (phone: string | null | undefined): string => {
   return phone
 }
 
-// 사업자등록번호 포맷
-export const formatBusinessNumber = (num: string | null | undefined): string => {
-  if (!num) return '-'
-  const cleaned = num.replace(/\D/g, '')
-  if (cleaned.length === 10) {
-    return cleaned.replace(/(\d{3})(\d{2})(\d{5})/, '$1-$2-$3')
-  }
-  return num
-}

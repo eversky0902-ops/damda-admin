@@ -1,16 +1,16 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useQuery } from '@tanstack/react-query'
-import { Table, Button, Tag, Select, DatePicker } from 'antd'
-import { PlusOutlined } from '@ant-design/icons'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { Table, Button, Tag, Select, DatePicker, Input, message, Popconfirm } from 'antd'
+
+const { RangePicker } = DatePicker
+import { PlusOutlined, SearchOutlined, CheckOutlined } from '@ant-design/icons'
 import type { ColumnsType } from 'antd/es/table'
 import dayjs from 'dayjs'
 
-import { getSettlements, getVendorsForSelect, type SettlementWithVendor } from '@/services/settlementService'
+import { getSettlements, bulkCompleteSettlements, type SettlementWithVendor } from '@/services/settlementService'
 import { DATE_FORMAT, DEFAULT_PAGE_SIZE } from '@/constants'
 import type { SettlementStatus } from '@/types'
-
-const { RangePicker } = DatePicker
 
 const STATUS_OPTIONS = [
   { value: 'all', label: '전체' },
@@ -20,31 +20,50 @@ const STATUS_OPTIONS = [
 
 export function SettlementsPage() {
   const navigate = useNavigate()
+  const queryClient = useQueryClient()
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE)
   const [status, setStatus] = useState<SettlementStatus | 'all'>('all')
-  const [vendorId, setVendorId] = useState<string>('all')
+  const [vendorSearch, setVendorSearch] = useState<string>('')
+  const [vendorSearchInput, setVendorSearchInput] = useState<string>('')
   const [dateRange, setDateRange] = useState<[dayjs.Dayjs | null, dayjs.Dayjs | null] | null>(null)
-
-  // 사업주 목록 조회
-  const { data: vendors = [] } = useQuery({
-    queryKey: ['vendorsForSelect'],
-    queryFn: () => getVendorsForSelect(),
-  })
+  const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([])
 
   // 정산 목록 조회
   const { data, isLoading } = useQuery({
-    queryKey: ['settlements', page, pageSize, status, vendorId, dateRange],
+    queryKey: ['settlements', page, pageSize, status, vendorSearch, dateRange],
     queryFn: () =>
       getSettlements({
         page,
         pageSize,
         status,
-        business_owner_id: vendorId,
+        vendor_search: vendorSearch,
         date_from: dateRange?.[0]?.format('YYYY-MM-DD'),
         date_to: dateRange?.[1]?.format('YYYY-MM-DD'),
       }),
   })
+
+  const bulkCompleteMutation = useMutation({
+    mutationFn: (ids: string[]) => bulkCompleteSettlements(ids),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['settlements'] })
+      message.success(`${selectedRowKeys.length}건의 정산이 완료 처리되었습니다`)
+      setSelectedRowKeys([])
+    },
+    onError: (error: Error) => {
+      message.error(error.message || '처리에 실패했습니다')
+    },
+  })
+
+  // 선택된 항목 중 대기중인 것만 필터
+  const selectedPendingCount = (data?.data || []).filter(
+    (s) => selectedRowKeys.includes(s.id) && s.status === 'pending'
+  ).length
+
+  const handleVendorSearch = () => {
+    setVendorSearch(vendorSearchInput)
+    setPage(1)
+  }
 
   const columns: ColumnsType<SettlementWithVendor> = [
     {
@@ -124,31 +143,40 @@ export function SettlementsPage() {
           flexWrap: 'wrap',
         }}
       >
-        <Select
-          value={vendorId}
-          onChange={setVendorId}
+        <Input
+          placeholder="사업주명 검색"
+          value={vendorSearchInput}
+          onChange={(e) => setVendorSearchInput(e.target.value)}
+          onPressEnter={handleVendorSearch}
           style={{ width: 180 }}
-          placeholder="사업주"
-          options={[
-            { value: 'all', label: '전체 사업주' },
-            ...vendors.map((v) => ({ value: v.id, label: v.name })),
-          ]}
+          prefix={<SearchOutlined style={{ color: '#bfbfbf' }} />}
         />
         <Select
           value={status}
-          onChange={setStatus}
+          onChange={(value) => {
+            setStatus(value)
+            setPage(1)
+          }}
           style={{ width: 120 }}
           options={STATUS_OPTIONS}
         />
         <RangePicker
           value={dateRange}
-          onChange={(dates) => setDateRange(dates)}
+          onChange={(dates) => {
+            setDateRange(dates)
+            setPage(1)
+          }}
+          style={{ width: 240 }}
           placeholder={['시작일', '종료일']}
         />
+        <Button type="primary" onClick={handleVendorSearch}>
+          검색
+        </Button>
         <Button
           onClick={() => {
             setStatus('all')
-            setVendorId('all')
+            setVendorSearch('')
+            setVendorSearchInput('')
             setDateRange(null)
             setPage(1)
           }}
@@ -157,6 +185,38 @@ export function SettlementsPage() {
         </Button>
       </div>
 
+      {selectedRowKeys.length > 0 && (
+        <div style={{ marginBottom: 12, display: 'flex', alignItems: 'center', gap: 12 }}>
+          <span>{selectedRowKeys.length}건 선택됨</span>
+          <Popconfirm
+            title="일괄 정산 완료"
+            description={`선택한 ${selectedPendingCount}건을 정산 완료 처리하시겠습니까?`}
+            onConfirm={() => {
+              const pendingIds = (data?.data || [])
+                .filter((s) => selectedRowKeys.includes(s.id) && s.status === 'pending')
+                .map((s) => s.id)
+              if (pendingIds.length === 0) {
+                message.warning('대기중인 정산이 없습니다')
+                return
+              }
+              bulkCompleteMutation.mutate(pendingIds)
+            }}
+            okText="완료 처리"
+            cancelText="취소"
+          >
+            <Button
+              type="primary"
+              icon={<CheckOutlined />}
+              disabled={selectedPendingCount === 0}
+              loading={bulkCompleteMutation.isPending}
+            >
+              정산 완료 ({selectedPendingCount})
+            </Button>
+          </Popconfirm>
+          <Button size="small" onClick={() => setSelectedRowKeys([])}>선택 해제</Button>
+        </div>
+      )}
+
       <Table
         columns={columns}
         dataSource={data?.data || []}
@@ -164,6 +224,10 @@ export function SettlementsPage() {
         loading={isLoading}
         size="small"
         bordered
+        rowSelection={{
+          selectedRowKeys,
+          onChange: (keys) => setSelectedRowKeys(keys),
+        }}
         pagination={{
           current: page,
           pageSize,

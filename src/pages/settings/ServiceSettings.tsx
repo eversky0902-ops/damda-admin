@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import { Form, Input, InputNumber, Select, Button, Card, Typography, Spin, message, Divider } from 'antd'
+import { Form, Input, InputNumber, Select, Button, Card, Typography, Spin, message } from 'antd'
 import { SaveOutlined, DollarOutlined, CalendarOutlined, CustomerServiceOutlined } from '@ant-design/icons'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { getAllSettings, updateSettings, settingsToObject } from '@/services/settingsService'
@@ -14,10 +14,6 @@ interface SettingsFormValues {
   settlement_cycle: 'weekly' | 'monthly'
   reservation_advance_days: number
   min_reservation_notice: number
-  cancellation_d3: number
-  cancellation_d2: number
-  cancellation_d1: number
-  cancellation_d0: number
   service_email: string
   service_phone: string
   business_hours_start: string
@@ -63,8 +59,6 @@ export function ServiceSettingsPage() {
   useEffect(() => {
     if (settings) {
       const obj = settingsToObject(settings)
-      const cancellationPolicy = obj.cancellation_policy as Record<string, number> | undefined
-
       form.setFieldsValue({
         default_commission_rate: obj.default_commission_rate as number,
         commission_rate_min: obj.commission_rate_min as number,
@@ -72,10 +66,6 @@ export function ServiceSettingsPage() {
         settlement_cycle: obj.settlement_cycle as 'weekly' | 'monthly',
         reservation_advance_days: obj.reservation_advance_days as number,
         min_reservation_notice: obj.min_reservation_notice as number,
-        cancellation_d3: cancellationPolicy?.d3 ?? 100,
-        cancellation_d2: cancellationPolicy?.d2 ?? 70,
-        cancellation_d1: cancellationPolicy?.d1 ?? 50,
-        cancellation_d0: cancellationPolicy?.d0 ?? 0,
         service_email: obj.service_email as string,
         service_phone: obj.service_phone as string,
         business_hours_start: (obj.business_hours as { start: string })?.start || '09:00',
@@ -94,12 +84,6 @@ export function ServiceSettingsPage() {
         settlement_cycle: values.settlement_cycle,
         reservation_advance_days: values.reservation_advance_days,
         min_reservation_notice: values.min_reservation_notice,
-        cancellation_policy: {
-          d3: values.cancellation_d3,
-          d2: values.cancellation_d2,
-          d1: values.cancellation_d1,
-          d0: values.cancellation_d0,
-        },
         service_email: values.service_email,
         service_phone: values.service_phone,
         business_hours: {
@@ -212,10 +196,10 @@ export function ServiceSettingsPage() {
           <SectionHeader
             icon={<CalendarOutlined />}
             title="예약 설정"
-            description="예약 및 취소/환불 정책 설정입니다."
+            description="예약 관련 기본 설정입니다."
           />
 
-          <div style={{ display: 'flex', gap: 24, flexWrap: 'wrap', marginBottom: 24 }}>
+          <div style={{ display: 'flex', gap: 24, flexWrap: 'wrap' }}>
             <Form.Item
               name="reservation_advance_days"
               label="예약 가능 기간"
@@ -230,28 +214,6 @@ export function ServiceSettingsPage() {
               extra="체험 시작 최소 며칠 전까지 예약 가능"
             >
               <InputNumber style={{ width: 120 }} min={0} max={30} addonAfter="일" />
-            </Form.Item>
-          </div>
-
-          <Divider style={{ margin: '24px 0 16px' }}>
-            취소/환불 정책
-          </Divider>
-          <Text type="secondary" style={{ display: 'block', marginBottom: 16, fontSize: 13 }}>
-            체험일 기준 D-n일에 취소 시 환불되는 비율입니다.
-          </Text>
-
-          <div style={{ display: 'flex', gap: 24, flexWrap: 'wrap' }}>
-            <Form.Item name="cancellation_d3" label="D-3 이전">
-              <InputNumber style={{ width: 100 }} min={0} max={100} addonAfter="%" />
-            </Form.Item>
-            <Form.Item name="cancellation_d2" label="D-2">
-              <InputNumber style={{ width: 100 }} min={0} max={100} addonAfter="%" />
-            </Form.Item>
-            <Form.Item name="cancellation_d1" label="D-1">
-              <InputNumber style={{ width: 100 }} min={0} max={100} addonAfter="%" />
-            </Form.Item>
-            <Form.Item name="cancellation_d0" label="당일 (D-0)">
-              <InputNumber style={{ width: 100 }} min={0} max={100} addonAfter="%" />
             </Form.Item>
           </div>
         </Card>

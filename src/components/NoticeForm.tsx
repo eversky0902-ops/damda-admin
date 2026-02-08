@@ -1,9 +1,22 @@
-import { Form, Input, Switch, Button, Card, Typography } from 'antd'
+import { useRef, useMemo, useCallback } from 'react'
+import { Form, Input, Switch, Button, Card, Typography, message } from 'antd'
 import { ArrowLeftOutlined, FileTextOutlined, SettingOutlined } from '@ant-design/icons'
+import ReactQuill from 'react-quill-new'
+import 'react-quill-new/dist/quill.snow.css'
 import type { Notice } from '@/types'
+import { uploadImage } from '@/services/storageService'
 
 const { Text } = Typography
-const { TextArea } = Input
+
+const quillFormats = [
+  'header',
+  'bold', 'italic', 'underline', 'strike',
+  'list', 'bullet', 'indent',
+  'color', 'background',
+  'align',
+  'link',
+  'image',
+]
 
 interface NoticeFormProps {
   mode: 'create' | 'edit'
@@ -33,6 +46,58 @@ export function NoticeForm({
   isSubmitting,
 }: NoticeFormProps) {
   const [form] = Form.useForm()
+  const quillRef = useRef<ReactQuill>(null)
+
+  const imageHandler = useCallback(() => {
+    const input = document.createElement('input')
+    input.setAttribute('type', 'file')
+    input.setAttribute('accept', 'image/*')
+    input.click()
+
+    input.onchange = async () => {
+      const file = input.files?.[0]
+      if (!file) return
+
+      if (file.size > 5 * 1024 * 1024) {
+        message.error('이미지 크기는 5MB 이하만 가능합니다')
+        return
+      }
+
+      try {
+        message.loading({ content: '이미지 업로드 중...', key: 'upload' })
+        const imageUrl = await uploadImage(file, 'notices')
+        message.success({ content: '이미지 업로드 완료', key: 'upload' })
+
+        const quill = quillRef.current?.getEditor()
+        if (quill) {
+          const range = quill.getSelection(true)
+          quill.insertEmbed(range.index, 'image', imageUrl)
+          quill.setSelection(range.index + 1)
+        }
+      } catch (error) {
+        console.error('Image upload failed:', error)
+        message.error({ content: '이미지 업로드에 실패했습니다', key: 'upload' })
+      }
+    }
+  }, [])
+
+  const quillModules = useMemo(() => ({
+    toolbar: {
+      container: [
+        [{ 'header': [1, 2, 3, 4, 5, 6, false] }],
+        ['bold', 'italic', 'underline', 'strike'],
+        [{ 'list': 'ordered' }, { 'list': 'bullet' }],
+        [{ 'indent': '-1' }, { 'indent': '+1' }],
+        [{ 'color': [] }, { 'background': [] }],
+        [{ 'align': [] }],
+        ['link', 'image'],
+        ['clean'],
+      ],
+      handlers: {
+        image: imageHandler,
+      },
+    },
+  }), [imageHandler])
 
   const handleSubmit = () => {
     form.validateFields().then((values) => {
@@ -69,14 +134,39 @@ export function NoticeForm({
         <Form.Item
           name="content"
           label="내용"
-          rules={[{ required: true, message: '내용을 입력해주세요' }]}
+          rules={[
+            {
+              required: true,
+              message: '내용을 입력해주세요',
+              validator: (_, value) => {
+                const stripped = value?.replace(/<[^>]*>/g, '').trim()
+                if (!stripped) return Promise.reject('내용을 입력해주세요')
+                return Promise.resolve()
+              },
+            },
+          ]}
         >
-          <TextArea
+          <ReactQuill
+            ref={quillRef}
+            theme="snow"
+            modules={quillModules}
+            formats={quillFormats}
             placeholder="공지사항 내용을 입력해주세요"
-            rows={12}
-            style={{ width: '100%' }}
+            className="notice-editor"
           />
         </Form.Item>
+        <style>{`
+          .notice-editor .ql-container {
+            min-height: 300px;
+          }
+          .notice-editor .ql-editor {
+            min-height: 300px;
+          }
+          .notice-editor .ql-editor img {
+            max-width: 100%;
+            height: auto;
+          }
+        `}</style>
       </Card>
 
       <Card style={{ marginBottom: 24 }}>

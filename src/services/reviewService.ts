@@ -1,6 +1,6 @@
 import { supabase } from '@/lib/supabase'
 import { logUpdate, logDelete } from '@/services/adminLogService'
-import type { Review, ReviewFilter, PaginationParams } from '@/types'
+import type { Review, ReviewFilter, ReviewSearchType, PaginationParams } from '@/types'
 
 // 리뷰 목록 조회
 export async function getReviews(
@@ -16,7 +16,7 @@ export async function getReviews(
       `
       *,
       daycare:daycares(id, name, contact_name),
-      product:products(id, name, thumbnail),
+      product:products(id, name, thumbnail, business_owner:business_owners(id, name)),
       images:review_images(id, image_url, sort_order)
     `,
       { count: 'exact' }
@@ -37,9 +37,40 @@ export async function getReviews(
     query = query.eq('rating', rating)
   }
 
-  // 검색 (상품명 또는 리뷰 내용)
+  // 검색 (검색 유형별 분기)
   if (search) {
-    query = query.or(`content.ilike.%${search}%`)
+    const searchType = (params as { search_type?: ReviewSearchType }).search_type || 'content'
+
+    if (searchType === 'vendor') {
+      // 업체명으로 상품 ID 조회 → 리뷰 필터
+      const { data: matchedProducts } = await supabase
+        .from('products')
+        .select('id, business_owner:business_owners!inner(name)')
+        .ilike('business_owners.name', `%${search}%`)
+
+      if (matchedProducts && matchedProducts.length > 0) {
+        const productIds = matchedProducts.map((p) => p.id)
+        query = query.in('product_id', productIds)
+      } else {
+        return { data: [], total: 0 }
+      }
+    } else if (searchType === 'daycare') {
+      // 어린이집명으로 daycare ID 조회 → 리뷰 필터
+      const { data: matchedDaycares } = await supabase
+        .from('daycares')
+        .select('id')
+        .ilike('name', `%${search}%`)
+
+      if (matchedDaycares && matchedDaycares.length > 0) {
+        const daycareIds = matchedDaycares.map((d) => d.id)
+        query = query.in('daycare_id', daycareIds)
+      } else {
+        return { data: [], total: 0 }
+      }
+    } else {
+      // 리뷰 내용 검색
+      query = query.ilike('content', `%${search}%`)
+    }
   }
 
   // 정렬 및 페이지네이션

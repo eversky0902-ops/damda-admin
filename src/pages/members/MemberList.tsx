@@ -1,12 +1,15 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { Table, Button, Input, Select, Tag } from 'antd'
-import { PlusOutlined, SearchOutlined } from '@ant-design/icons'
+import { Table, Button, Input, Select, Tag, Dropdown, message } from 'antd'
+import { SearchOutlined, DownloadOutlined } from '@ant-design/icons'
 import type { ColumnsType, TablePaginationConfig } from 'antd/es/table'
+import type { MenuProps } from 'antd'
 import dayjs from 'dayjs'
 
-import { getDaycares } from '@/services/daycareService'
+import { getDaycares, getAllDaycares } from '@/services/daycareService'
+import { formatPhoneNumber } from '@/utils/format'
+import { downloadExcel, formatDaycaresForExcel, DAYCARE_EXCEL_COLUMNS } from '@/utils/excel'
 import { DAYCARE_STATUS_LABEL, DAYCARE_STATUS_COLOR, DEFAULT_PAGE_SIZE, DATE_FORMAT } from '@/constants'
 import type { Daycare, DaycareStatus } from '@/types'
 
@@ -38,6 +41,48 @@ export function MemberListPage() {
     setPageSize(pagination.pageSize || DEFAULT_PAGE_SIZE)
   }
 
+  // 엑셀 다운로드 (현재 목록)
+  const handleDownloadCurrent = () => {
+    if (!data?.data.length) {
+      message.warning('다운로드할 데이터가 없습니다')
+      return
+    }
+    const formatted = formatDaycaresForExcel(data.data)
+    downloadExcel(formatted, DAYCARE_EXCEL_COLUMNS, '회원_목록')
+  }
+
+  // 엑셀 다운로드 (전체)
+  const handleDownloadAll = async () => {
+    try {
+      message.loading({ content: '전체 데이터를 가져오는 중...', key: 'download' })
+      const allData = await getAllDaycares()
+      if (allData.length === 0) {
+        message.warning({ content: '다운로드할 데이터가 없습니다.', key: 'download' })
+        return
+      }
+      const formatted = formatDaycaresForExcel(allData)
+      downloadExcel(formatted, DAYCARE_EXCEL_COLUMNS, '회원_전체목록')
+      message.success({ content: `엑셀 다운로드 완료 (${allData.length}건)`, key: 'download' })
+    } catch {
+      message.error({ content: '다운로드 중 오류가 발생했습니다.', key: 'download' })
+    }
+  }
+
+  const downloadMenuItems: MenuProps['items'] = [
+    {
+      key: 'current',
+      label: '현재 목록 다운로드',
+      icon: <DownloadOutlined />,
+      onClick: handleDownloadCurrent,
+    },
+    {
+      key: 'all',
+      label: '전체 목록 다운로드',
+      icon: <DownloadOutlined />,
+      onClick: handleDownloadAll,
+    },
+  ]
+
   const columns: ColumnsType<Daycare> = [
     {
       title: '어린이집명',
@@ -61,6 +106,7 @@ export function MemberListPage() {
       title: '연락처',
       dataIndex: 'contact_phone',
       key: 'contact_phone',
+      render: (phone: string) => formatPhoneNumber(phone),
     },
     {
       title: '정원',
@@ -93,13 +139,9 @@ export function MemberListPage() {
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 16 }}>
         <h2 style={{ margin: 0 }}>회원 관리</h2>
-        <Button
-          type="primary"
-          icon={<PlusOutlined />}
-          onClick={() => navigate('/members/new')}
-        >
-          회원 등록
-        </Button>
+        <Dropdown menu={{ items: downloadMenuItems }} placement="bottomRight">
+          <Button icon={<DownloadOutlined />}>엑셀 다운로드</Button>
+        </Dropdown>
       </div>
 
       <div style={{

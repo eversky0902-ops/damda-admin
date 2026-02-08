@@ -16,6 +16,7 @@ import dayjs from 'dayjs'
 
 import { getVendors, getAllVendors, upsertVendorsBulk } from '@/services/vendorService'
 import { VENDOR_STATUS_LABEL, DEFAULT_PAGE_SIZE, DATE_FORMAT } from '@/constants'
+import { formatPhoneNumber } from '@/utils/format'
 import type { BusinessOwner, VendorStatus, BusinessOwnerCreateInput } from '@/types'
 import {
   downloadExcel,
@@ -200,6 +201,7 @@ export function VendorsPage() {
       title: '연락처',
       dataIndex: 'contact_phone',
       key: 'contact_phone',
+      render: (phone: string) => formatPhoneNumber(phone),
     },
     {
       title: '수수료율',

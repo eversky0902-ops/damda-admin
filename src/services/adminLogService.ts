@@ -176,6 +176,7 @@ export const TARGET_TYPE_LABELS: Record<AdminLogTargetType, string> = {
   ad_banner: '광고 배너',
   popup: '팝업',
   inquiry: '1:1 문의',
+  partner_inquiry: '입점문의',
   site_settings: '사이트 설정',
 }
 

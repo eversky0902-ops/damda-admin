@@ -69,6 +69,25 @@ export async function getReservations(
   }
 }
 
+// 예약 전체 목록 조회 (엑셀 다운로드용)
+export async function getAllReservations(): Promise<Reservation[]> {
+  const { data, error } = await supabase
+    .from('reservations')
+    .select(`
+      *,
+      daycare:daycares(id, name, contact_name, contact_phone),
+      product:products(id, name, thumbnail),
+      business_owner:business_owners(id, name)
+    `)
+    .order('reserved_date', { ascending: false })
+
+  if (error) {
+    throw new Error(error.message)
+  }
+
+  return (data as Reservation[]) || []
+}
+
 // 예약 상세 조회
 export async function getReservation(id: string): Promise<Reservation> {
   const { data, error } = await supabase

@@ -1,7 +1,7 @@
 import { useParams, useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Descriptions, Button, Tag, Spin, Divider, message, Popconfirm, Switch } from 'antd'
-import { ArrowLeftOutlined, DeleteOutlined } from '@ant-design/icons'
+import { ArrowLeftOutlined, DeleteOutlined, EditOutlined } from '@ant-design/icons'
 import dayjs from 'dayjs'
 
 import { getLegalDocument, deleteLegalDocument, toggleLegalDocumentVisibility } from '@/services/legalDocumentService'
@@ -70,6 +70,9 @@ export function LegalDocumentDetailPage() {
       </div>
 
       <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
+        <Button icon={<EditOutlined />} onClick={() => navigate(`/content/legal-documents/${id}/edit`)}>
+          수정
+        </Button>
         <Popconfirm
           title="문서 삭제"
           description="정말 삭제하시겠습니까? 삭제된 문서는 복구할 수 없습니다."
@@ -104,6 +107,7 @@ export function LegalDocumentDetailPage() {
       <div style={{ marginBottom: 24 }}>
         <h4 style={{ marginBottom: 8 }}>내용</h4>
         <div
+          className="legal-document-content"
           style={{
             padding: 16,
             background: '#fafafa',
@@ -112,6 +116,20 @@ export function LegalDocumentDetailPage() {
           }}
           dangerouslySetInnerHTML={{ __html: document.content }}
         />
+        <style>{`
+          .legal-document-content p {
+            margin: 0;
+            min-height: 1.4em;
+          }
+          .legal-document-content p:empty,
+          .legal-document-content p > br:only-child {
+            min-height: 1.4em;
+          }
+          .legal-document-content ol,
+          .legal-document-content ul {
+            padding-left: 24px;
+          }
+        `}</style>
       </div>
 
       <Divider />

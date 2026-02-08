@@ -114,6 +114,28 @@ export async function createLegalDocument(
   return data as LegalDocument
 }
 
+// 법적 문서 수정
+export async function updateLegalDocument(
+  id: string,
+  input: { title?: string; content?: string; is_visible?: boolean }
+): Promise<LegalDocument> {
+  const { data, error } = await supabase
+    .from('legal_documents')
+    .update({
+      ...input,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', id)
+    .select()
+    .single()
+
+  if (error) {
+    throw new Error(error.message)
+  }
+
+  return data as LegalDocument
+}
+
 // 법적 문서 삭제
 export async function deleteLegalDocument(id: string): Promise<void> {
   const { error } = await supabase

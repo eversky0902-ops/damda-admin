@@ -11,9 +11,11 @@ import {
   CalendarOutlined,
   CreditCardOutlined,
   DollarOutlined,
+  BarChartOutlined,
   FileTextOutlined,
   SettingOutlined,
   LogoutOutlined,
+  FormOutlined,
 } from '@ant-design/icons'
 import { useUIStore } from '@/stores/uiStore'
 import { useAuthStore } from '@/stores/authStore'
@@ -37,6 +39,11 @@ const menuItems: MenuProps['items'] = [
     key: '/members',
     icon: <UserOutlined />,
     label: '회원 관리',
+  },
+  {
+    key: '/partner-inquiries',
+    icon: <FormOutlined />,
+    label: '입점문의',
   },
   {
     key: '/products',
@@ -67,6 +74,14 @@ const menuItems: MenuProps['items'] = [
     key: '/settlements',
     icon: <DollarOutlined />,
     label: '정산 관리',
+  },
+  {
+    key: '/stats',
+    icon: <BarChartOutlined />,
+    label: '통계',
+    children: [
+      { key: '/stats/regional', label: '지역별 월간통계' },
+    ],
   },
   {
     key: '/content',

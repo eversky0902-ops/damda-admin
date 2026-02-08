@@ -10,20 +10,6 @@ import type { Daycare, DaycareDocument } from '@/types'
 
 const { Text } = Typography
 
-// 핸드폰 번호 포맷팅 (숫자만 추출 후 010-0000-0000 형식으로 변환)
-function formatPhoneNumber(value: string): string {
-  const numbers = value.replace(/[^0-9]/g, '')
-  if (numbers.length <= 3) return numbers
-  if (numbers.length <= 7) return `${numbers.slice(0, 3)}-${numbers.slice(3)}`
-  return `${numbers.slice(0, 3)}-${numbers.slice(3, 7)}-${numbers.slice(7, 11)}`
-}
-
-// 핸드폰 번호 유효성 검사 (010으로 시작하는 11자리)
-function isValidMobilePhone(value: string): boolean {
-  const numbers = value.replace(/[^0-9]/g, '')
-  return /^010\d{8}$/.test(numbers)
-}
-
 function SectionHeader({ icon, title, description }: { icon: React.ReactNode; title: string; description: string }) {
   return (
     <div style={{ marginBottom: 24 }}>
@@ -194,7 +180,7 @@ export function DaycareForm({
           <Form.Item
             name="email"
             label="이메일"
-            rules={isEdit ? undefined : [
+            rules={[
               { required: true, message: '이메일을 입력하세요' },
               { type: 'email', message: '올바른 이메일 형식이 아닙니다' },
             ]}
@@ -221,10 +207,15 @@ export function DaycareForm({
               <Form.Item
                 name="business_number"
                 label="사업자번호"
+                extra="숫자만 입력"
               >
                 <Input
-                  placeholder="000-00-00000"
+                  placeholder="숫자만 입력"
                   style={{ width: 180 }}
+                  onChange={(e) => {
+                    const val = e.target.value.replace(/\D/g, '')
+                    form.setFieldValue('business_number', val)
+                  }}
                 />
               </Form.Item>
             </Col>
@@ -252,20 +243,16 @@ export function DaycareForm({
               <Form.Item
                 name="contact_phone"
                 label="담당자 연락처"
-                extra="휴대폰 번호만 입력 가능합니다"
-                rules={[
-                  { required: true, message: '연락처를 입력하세요' },
-                  {
-                    validator: (_, value) => {
-                      if (!value) return Promise.resolve()
-                      if (isValidMobilePhone(value)) return Promise.resolve()
-                      return Promise.reject(new Error('010으로 시작하는 휴대폰 번호를 입력하세요'))
-                    },
-                  },
-                ]}
-                getValueFromEvent={(e) => formatPhoneNumber(e.target.value)}
+                rules={[{ required: true, message: '연락처를 입력하세요' }]}
               >
-                <Input placeholder="010-0000-0000" style={{ width: 180 }} maxLength={13} />
+                <Input
+                  placeholder="숫자만 입력"
+                  style={{ width: 180 }}
+                  onChange={(e) => {
+                    const val = e.target.value.replace(/\D/g, '')
+                    form.setFieldValue('contact_phone', val)
+                  }}
+                />
               </Form.Item>
             </Col>
           </Row>
@@ -315,9 +302,17 @@ export function DaycareForm({
               <Form.Item
                 name="license_number"
                 label="인가번호"
+                extra="숫자만 입력"
                 rules={[{ required: true, message: '인가번호를 입력하세요' }]}
               >
-                <Input placeholder="어린이집 인가번호" style={{ width: 200 }} />
+                <Input
+                  placeholder="숫자만 입력"
+                  style={{ width: 200 }}
+                  onChange={(e) => {
+                    const val = e.target.value.replace(/\D/g, '')
+                    form.setFieldValue('license_number', val)
+                  }}
+                />
               </Form.Item>
             </Col>
             <Col>
@@ -325,7 +320,14 @@ export function DaycareForm({
                 name="tel"
                 label="전화번호"
               >
-                <Input placeholder="02-0000-0000" style={{ width: 180 }} />
+                <Input
+                  placeholder="숫자만 입력"
+                  style={{ width: 180 }}
+                  onChange={(e) => {
+                    const val = e.target.value.replace(/\D/g, '')
+                    form.setFieldValue('tel', val)
+                  }}
+                />
               </Form.Item>
             </Col>
             <Col>
@@ -445,6 +447,7 @@ export function DaycareForm({
         width={500}
       >
         <DaumPostcodeEmbed
+          scriptUrl="https://t1.kakaocdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js"
           onComplete={handlePostcodeComplete}
           style={{ height: 450 }}
         />

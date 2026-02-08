@@ -1310,7 +1310,7 @@ export function ProductForm({
         destroyOnClose
         width={500}
       >
-        <DaumPostcodeEmbed onComplete={handlePostcodeComplete} style={{ height: 450 }} />
+        <DaumPostcodeEmbed scriptUrl="https://t1.kakaocdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js" onComplete={handlePostcodeComplete} style={{ height: 450 }} />
       </Modal>
     </>
   )

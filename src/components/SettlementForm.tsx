@@ -225,6 +225,8 @@ export function SettlementForm({
         .compact-form .ant-row > .ant-col .ant-form-item { margin-bottom: 0; }
         .compact-form .ant-row { margin-bottom: 12px; }
         .compact-form .ant-card-body > *:last-child { margin-bottom: 0; }
+        .single-calendar-range .ant-picker-panels > *:last-child { display: none; }
+        .single-calendar-range .ant-picker-footer-extra { display: none; }
       `}</style>
 
       <Form
@@ -277,6 +279,7 @@ export function SettlementForm({
                 <RangePicker
                   style={{ width: 280 }}
                   placeholder={['시작일', '종료일']}
+                  popupClassName="single-calendar-range"
                   onChange={handlePeriodChange}
                 />
               </Form.Item>

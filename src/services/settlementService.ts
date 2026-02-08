@@ -4,6 +4,7 @@ import type { Settlement, SettlementStatus, PaginationParams } from '@/types'
 export interface SettlementFilter {
   status?: SettlementStatus | 'all'
   business_owner_id?: string | 'all'
+  vendor_search?: string
   date_from?: string
   date_to?: string
 }
@@ -41,7 +42,7 @@ export interface SettlementWithVendor extends Settlement {
 export async function getSettlements(
   params: PaginationParams & SettlementFilter
 ): Promise<{ data: SettlementWithVendor[]; total: number }> {
-  const { page, pageSize, status, business_owner_id, date_from, date_to } = params
+  const { page, pageSize, status, business_owner_id, vendor_search, date_from, date_to } = params
   const from = (page - 1) * pageSize
   const to = from + pageSize - 1
 
@@ -57,9 +58,22 @@ export async function getSettlements(
     query = query.eq('status', status)
   }
 
-  // 사업주 필터
+  // 사업주 필터 (ID 또는 이름 검색)
   if (business_owner_id && business_owner_id !== 'all') {
     query = query.eq('business_owner_id', business_owner_id)
+  } else if (vendor_search) {
+    // 사업주명으로 먼저 ID 목록 조회
+    const { data: matchedVendors } = await supabase
+      .from('business_owners')
+      .select('id')
+      .ilike('name', `%${vendor_search}%`)
+
+    if (matchedVendors && matchedVendors.length > 0) {
+      const vendorIds = matchedVendors.map((v) => v.id)
+      query = query.in('business_owner_id', vendorIds)
+    } else {
+      return { data: [], total: 0 }
+    }
   }
 
   // 기간 필터
@@ -180,6 +194,22 @@ export async function completeSettlement(id: string): Promise<Settlement> {
   }
 
   return data as Settlement
+}
+
+// 정산 일괄 완료 처리
+export async function bulkCompleteSettlements(ids: string[]): Promise<void> {
+  const { error } = await supabase
+    .from('settlements')
+    .update({
+      status: 'completed',
+      settled_at: new Date().toISOString(),
+    })
+    .in('id', ids)
+    .eq('status', 'pending')
+
+  if (error) {
+    throw new Error(error.message)
+  }
 }
 
 // 정산 삭제

@@ -115,12 +115,21 @@ export function NoticeDetailPage() {
             padding: 16,
             background: '#fafafa',
             borderRadius: 6,
-            whiteSpace: 'pre-wrap',
             minHeight: 200,
           }}
-        >
-          {notice.content}
-        </div>
+          className="notice-content-view"
+          dangerouslySetInnerHTML={{ __html: notice.content }}
+        />
+        <style>{`
+          .notice-content-view img {
+            max-width: 100%;
+            height: auto;
+          }
+          .notice-content-view p {
+            margin: 0;
+            min-height: 1.4em;
+          }
+        `}</style>
       </div>
 
       <Divider />

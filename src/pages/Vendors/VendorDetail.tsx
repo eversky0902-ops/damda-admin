@@ -33,6 +33,7 @@ import {
   getVendorDocuments,
 } from '@/services/vendorService'
 import { useAuthStore } from '@/stores/authStore'
+import { formatPhoneNumber } from '@/utils/format'
 import { VENDOR_STATUS_LABEL, DATE_FORMAT, DEFAULT_PAGE_SIZE } from '@/constants'
 import type { Settlement, CommissionHistory, SettlementStatus, BusinessOwnerDocument } from '@/types'
 
@@ -233,7 +234,7 @@ export function VendorDetailPage() {
             <Descriptions.Item label="사업자번호">{vendor.business_number}</Descriptions.Item>
             <Descriptions.Item label="대표자">{vendor.representative}</Descriptions.Item>
             <Descriptions.Item label="담당자">{vendor.contact_name}</Descriptions.Item>
-            <Descriptions.Item label="연락처">{vendor.contact_phone}</Descriptions.Item>
+            <Descriptions.Item label="연락처">{formatPhoneNumber(vendor.contact_phone)}</Descriptions.Item>
             <Descriptions.Item label="이메일">{vendor.email}</Descriptions.Item>
             <Descriptions.Item label="수수료율">
               <Space>

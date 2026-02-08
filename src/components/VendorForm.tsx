@@ -2,11 +2,13 @@ import { useState, useEffect } from 'react'
 import { Form, Input, InputNumber, Button, Card, Typography, Row, Col, Modal, message, List, Space, Popconfirm, Upload, Spin } from 'antd'
 import { ArrowLeftOutlined, ShopOutlined, BankOutlined, SearchOutlined, FileTextOutlined, UploadOutlined, DeleteOutlined, FileOutlined, FilePdfOutlined, FileImageOutlined } from '@ant-design/icons'
 import { DaumPostcodeEmbed, type Address } from 'react-daum-postcode'
+import { useQuery } from '@tanstack/react-query'
 import type { RcFile } from 'antd/es/upload'
 
 import { LogoUpload } from '@/components/LogoUpload'
 import { uploadVendorDocument, deleteVendorDocument } from '@/services/storageService'
 import { getVendorDocuments, addVendorDocument, deleteVendorDocumentRecord } from '@/services/vendorService'
+import { getAllSettings, settingsToObject } from '@/services/settingsService'
 import type { BusinessOwner, BusinessOwnerDocument, BusinessOwnerDocumentType } from '@/types'
 
 const { Text } = Typography
@@ -61,6 +63,31 @@ export function VendorForm({
   const [uploadingType, setUploadingType] = useState<BusinessOwnerDocumentType | null>(null)
 
   const isEdit = mode === 'edit'
+
+  // 서비스 설정에서 기본 수수료율 조회
+  const { data: siteSettings } = useQuery({
+    queryKey: ['siteSettings'],
+    queryFn: getAllSettings,
+    enabled: !isEdit,
+  })
+
+  // 서비스 설정에서 수수료율 정보 추출
+  const commissionSettings = (() => {
+    if (!siteSettings) return { defaultRate: 10, min: 5, max: 15 }
+    const obj = settingsToObject(siteSettings)
+    return {
+      defaultRate: (obj.default_commission_rate as number) || 10,
+      min: (obj.commission_rate_min as number) || 5,
+      max: (obj.commission_rate_max as number) || 15,
+    }
+  })()
+
+  // 기본 수수료율을 폼에 반영
+  useEffect(() => {
+    if (!isEdit && siteSettings && !initialValues?.commission_rate) {
+      form.setFieldValue('commission_rate', commissionSettings.defaultRate)
+    }
+  }, [siteSettings, isEdit, initialValues, form, commissionSettings.defaultRate])
 
   // 문서 목록 로드
   useEffect(() => {
@@ -161,7 +188,7 @@ export function VendorForm({
       <Form
         form={form}
         layout="vertical"
-        initialValues={initialValues ?? { commission_rate: 10 }}
+        initialValues={initialValues ?? { commission_rate: commissionSettings.defaultRate }}
         style={{ width: '100%' }}
         className="compact-form"
         requiredMark={(label, { required }) => (
@@ -185,7 +212,7 @@ export function VendorForm({
           <Form.Item
             name="email"
             label="이메일"
-            rules={isEdit ? undefined : [
+            rules={[
               { required: true, message: '이메일을 입력하세요' },
               { type: 'email', message: '올바른 이메일 형식이 아닙니다' },
             ]}
@@ -193,7 +220,7 @@ export function VendorForm({
             <Input
               placeholder="example@email.com"
               style={{ maxWidth: 320 }}
-              disabled={isEdit}
+              disabled={mode === 'edit'}
             />
           </Form.Item>
 
@@ -212,12 +239,16 @@ export function VendorForm({
               <Form.Item
                 name="business_number"
                 label="사업자번호"
-                rules={isEdit ? undefined : [{ required: true, message: '사업자번호를 입력하세요' }]}
+                extra="숫자만 입력"
+                rules={[{ required: true, message: '사업자번호를 입력하세요' }]}
               >
                 <Input
-                  placeholder="000-00-00000"
+                  placeholder="숫자만 입력"
                   style={{ width: 180 }}
-                  disabled={isEdit}
+                  onChange={(e) => {
+                    const val = e.target.value.replace(/\D/g, '')
+                    form.setFieldValue('business_number', val)
+                  }}
                 />
               </Form.Item>
             </Col>
@@ -248,7 +279,14 @@ export function VendorForm({
                 label="담당자 연락처"
                 rules={[{ required: true, message: '연락처를 입력하세요' }]}
               >
-                <Input placeholder="010-0000-0000" style={{ width: 180 }} />
+                <Input
+                  placeholder="숫자만 입력"
+                  style={{ width: 180 }}
+                  onChange={(e) => {
+                    const val = e.target.value.replace(/\D/g, '')
+                    form.setFieldValue('contact_phone', val)
+                  }}
+                />
               </Form.Item>
             </Col>
           </Row>
@@ -309,9 +347,16 @@ export function VendorForm({
               <Form.Item
                 name="bank_account"
                 label="계좌번호"
-                extra="- 없이 숫자만 입력"
+                extra="숫자만 입력"
               >
-                <Input placeholder="1234567890123" style={{ width: 200 }} />
+                <Input
+                  placeholder="숫자만 입력"
+                  style={{ width: 200 }}
+                  onChange={(e) => {
+                    const val = e.target.value.replace(/\D/g, '')
+                    form.setFieldValue('bank_account', val)
+                  }}
+                />
               </Form.Item>
             </Col>
           </Row>
@@ -320,20 +365,20 @@ export function VendorForm({
             <Form.Item
               name="commission_rate"
               label="수수료율"
-              extra="판매 금액에서 차감되는 플랫폼 수수료입니다 (기본 10%)"
+              extra={`판매 금액에서 차감되는 플랫폼 수수료입니다 (기본 ${commissionSettings.defaultRate}%)`}
               rules={[
                 { required: true, message: '수수료율을 입력하세요' },
                 {
                   type: 'number',
-                  min: 5,
-                  max: 15,
-                  message: '수수료율은 5~15% 사이여야 합니다',
+                  min: commissionSettings.min,
+                  max: commissionSettings.max,
+                  message: `수수료율은 ${commissionSettings.min}~${commissionSettings.max}% 사이여야 합니다`,
                 },
               ]}
             >
               <InputNumber
-                min={5}
-                max={15}
+                min={commissionSettings.min}
+                max={commissionSettings.max}
                 step={0.5}
                 style={{ width: 120 }}
                 addonAfter="%"
@@ -451,6 +496,7 @@ export function VendorForm({
         width={500}
       >
         <DaumPostcodeEmbed
+          scriptUrl="https://t1.kakaocdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js"
           onComplete={handlePostcodeComplete}
           style={{ height: 450 }}
         />

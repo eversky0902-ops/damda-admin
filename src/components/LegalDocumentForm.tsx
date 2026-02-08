@@ -10,7 +10,7 @@ import { uploadImage } from '@/services/storageService'
 const { Text } = Typography
 
 interface LegalDocumentFormProps {
-  mode: 'create'
+  mode: 'create' | 'edit'
   initialValues?: Partial<LegalDocument>
   onSubmit: (values: Record<string, unknown>) => void
   onCancel: () => void
@@ -132,7 +132,7 @@ export function LegalDocumentForm({
           label="카테고리"
           rules={[{ required: true, message: '카테고리를 선택해주세요' }]}
         >
-          <Radio.Group>
+          <Radio.Group disabled={mode === 'edit'}>
             {LEGAL_DOCUMENT_CATEGORY_OPTIONS.map((option) => (
               <Radio.Button key={option.value} value={option.value as LegalDocumentCategory}>
                 {option.label}

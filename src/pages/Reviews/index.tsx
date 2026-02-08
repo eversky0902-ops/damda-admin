@@ -14,7 +14,7 @@ import {
   REVIEW_VISIBILITY_COLOR,
   RATING_OPTIONS,
 } from '@/constants'
-import type { Review } from '@/types'
+import type { Review, ReviewSearchType } from '@/types'
 
 export function ReviewsPage() {
   const navigate = useNavigate()
@@ -22,17 +22,19 @@ export function ReviewsPage() {
   const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE)
   const [search, setSearch] = useState('')
   const [searchInput, setSearchInput] = useState('')
+  const [searchType, setSearchType] = useState<ReviewSearchType>('content')
   const [statusFilter, setStatusFilter] = useState<'all' | 'visible' | 'hidden'>('all')
   const [featuredFilter, setFeaturedFilter] = useState<'all' | 'featured' | 'normal'>('all')
   const [ratingFilter, setRatingFilter] = useState<number | 'all'>('all')
 
   const { data, isLoading } = useQuery({
-    queryKey: ['reviews', page, pageSize, search, statusFilter, featuredFilter, ratingFilter],
+    queryKey: ['reviews', page, pageSize, search, searchType, statusFilter, featuredFilter, ratingFilter],
     queryFn: () =>
       getReviews({
         page,
         pageSize,
         search,
+        search_type: searchType,
         status: statusFilter,
         featured: featuredFilter,
         rating: ratingFilter,
@@ -184,12 +186,27 @@ export function ReviewsPage() {
           flexWrap: 'wrap',
         }}
       >
+        <Select
+          value={searchType}
+          onChange={(value) => {
+            setSearchType(value)
+            setSearchInput('')
+            setSearch('')
+            setPage(1)
+          }}
+          style={{ width: 120 }}
+          options={[
+            { value: 'content', label: '리뷰 내용' },
+            { value: 'vendor', label: '업체명' },
+            { value: 'daycare', label: '어린이집명' },
+          ]}
+        />
         <Input
-          placeholder="리뷰 내용 검색"
+          placeholder={searchType === 'vendor' ? '업체명 검색' : searchType === 'daycare' ? '어린이집명 검색' : '리뷰 내용 검색'}
           value={searchInput}
           onChange={(e) => setSearchInput(e.target.value)}
           onPressEnter={handleSearch}
-          style={{ width: 200 }}
+          style={{ width: 240 }}
           prefix={<SearchOutlined style={{ color: '#bfbfbf' }} />}
         />
         <Select

@@ -1,13 +1,15 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { Table, Input, Select, Tag, DatePicker, Space, Card, Statistic, Row, Col } from 'antd'
-import { SearchOutlined, CalendarOutlined } from '@ant-design/icons'
+import { Table, Input, Select, Tag, DatePicker, Space, Card, Statistic, Row, Col, Button, Dropdown, message } from 'antd'
+import { SearchOutlined, CalendarOutlined, DownloadOutlined } from '@ant-design/icons'
 import type { ColumnsType, TablePaginationConfig } from 'antd/es/table'
+import type { MenuProps } from 'antd'
 import type { Dayjs } from 'dayjs'
 import dayjs from 'dayjs'
 
-import { getReservations, getBusinessOwnersForFilter, getReservationStats } from '@/services/reservationService'
+import { getReservations, getAllReservations, getBusinessOwnersForFilter, getReservationStats } from '@/services/reservationService'
+import { downloadExcel, formatReservationsForExcel, RESERVATION_EXCEL_COLUMNS } from '@/utils/excel'
 import {
   RESERVATION_STATUS_LABEL,
   RESERVATION_STATUS_COLOR,
@@ -64,6 +66,48 @@ export function ReservationsPage() {
     setPage(pagination.current || 1)
     setPageSize(pagination.pageSize || DEFAULT_PAGE_SIZE)
   }
+
+  // 엑셀 다운로드 (현재 목록)
+  const handleDownloadCurrent = () => {
+    if (!data?.data.length) {
+      message.warning('다운로드할 데이터가 없습니다')
+      return
+    }
+    const formatted = formatReservationsForExcel(data.data)
+    downloadExcel(formatted, RESERVATION_EXCEL_COLUMNS, '예약_목록')
+  }
+
+  // 엑셀 다운로드 (전체)
+  const handleDownloadAll = async () => {
+    try {
+      message.loading({ content: '전체 데이터를 가져오는 중...', key: 'download' })
+      const allData = await getAllReservations()
+      if (allData.length === 0) {
+        message.warning({ content: '다운로드할 데이터가 없습니다.', key: 'download' })
+        return
+      }
+      const formatted = formatReservationsForExcel(allData)
+      downloadExcel(formatted, RESERVATION_EXCEL_COLUMNS, '예약_전체목록')
+      message.success({ content: `엑셀 다운로드 완료 (${allData.length}건)`, key: 'download' })
+    } catch {
+      message.error({ content: '다운로드 중 오류가 발생했습니다.', key: 'download' })
+    }
+  }
+
+  const downloadMenuItems: MenuProps['items'] = [
+    {
+      key: 'current',
+      label: '현재 목록 다운로드',
+      icon: <DownloadOutlined />,
+      onClick: handleDownloadCurrent,
+    },
+    {
+      key: 'all',
+      label: '전체 목록 다운로드',
+      icon: <DownloadOutlined />,
+      onClick: handleDownloadAll,
+    },
+  ]
 
   const columns: ColumnsType<Reservation> = [
     {
@@ -164,6 +208,9 @@ export function ReservationsPage() {
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 16 }}>
         <h2 style={{ margin: 0 }}>예약 관리</h2>
+        <Dropdown menu={{ items: downloadMenuItems }} placement="bottomRight">
+          <Button icon={<DownloadOutlined />}>엑셀 다운로드</Button>
+        </Dropdown>
       </div>
 
       {/* 통계 카드 */}
