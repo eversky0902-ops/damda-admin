@@ -82,15 +82,15 @@ export function formatDaycaresForExcel(daycares: DaycareForExcel[]) {
 interface DaycareForExcel {
   name: string
   email: string
-  representative?: string
+  representative?: string | null
   contact_name: string
   contact_phone: string
-  business_number?: string
+  business_number?: string | null
   license_number: string
   address: string
-  address_detail?: string
-  zipcode?: string
-  tel?: string
+  address_detail?: string | null
+  zipcode?: string | null
+  tel?: string | null
   capacity?: number | null
   status: string
   created_at: string

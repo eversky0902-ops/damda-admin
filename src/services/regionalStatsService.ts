@@ -164,14 +164,6 @@ export async function getRegionalMonthlyComparison(yearMonth: string): Promise<R
     })
     .sort((a, b) => b.revenue - a.revenue)
 
-  // 전체 요약
-  const sumStats = (list: RegionalStats[]) => ({
-    revenue: list.reduce((s, r) => s + r.revenue, 0),
-    daycareCount: new Set(list.flatMap(() => [])).size, // 아래에서 별도 계산
-    businessOwnerCount: 0,
-    reservationCount: list.reduce((s, r) => s + r.reservationCount, 0),
-  })
-
   const curTotal = {
     revenue: current.reduce((s, r) => s + r.revenue, 0),
     daycareCount: current.reduce((s, r) => s + r.daycareCount, 0),

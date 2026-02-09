@@ -376,7 +376,7 @@ export function RegionalMonthlyStatsPage() {
                     }
                   />
                   <Tooltip
-                    formatter={(value: number) => [`${value.toLocaleString()}원`, '매출액']}
+                    formatter={(value: number | undefined) => [`${(value ?? 0).toLocaleString()}원`, '매출액']}
                     contentStyle={{ fontSize: 12 }}
                   />
                   <Bar dataKey="revenue" fill="#1890ff" radius={[4, 4, 0, 0]} />

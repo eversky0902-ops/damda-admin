@@ -43,7 +43,7 @@ export async function getPartnerInquiries(
   }
 
   return {
-    data: (data as PartnerInquiry[]) || [],
+    data: (data as unknown as PartnerInquiry[]) || [],
     total: count || 0,
   }
 }
@@ -63,7 +63,7 @@ export async function getPartnerInquiry(id: string): Promise<PartnerInquiry> {
     throw new Error(error.message)
   }
 
-  return data as PartnerInquiry
+  return data as unknown as PartnerInquiry
 }
 
 // 입점문의 처리완료 + 메모 저장
@@ -103,7 +103,7 @@ export async function updatePartnerInquiryStatus(
     data as Record<string, unknown>
   )
 
-  return data as PartnerInquiry
+  return data as unknown as PartnerInquiry
 }
 
 // 입점문의 메모 수정
@@ -113,7 +113,7 @@ export async function updatePartnerInquiryMemo(
 ): Promise<void> {
   const { error } = await supabase
     .from('partner_inquiries')
-    .update({ memo })
+    .update({ memo } as Record<string, unknown>)
     .eq('id', id)
 
   if (error) {
