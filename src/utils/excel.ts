@@ -217,6 +217,52 @@ interface SettlementPaymentForExcel {
   }
 }
 
+// 입점문의 엑셀 다운로드용 컬럼 정의
+export const PARTNER_INQUIRY_EXCEL_COLUMNS = [
+  { key: 'name', header: '업체명' },
+  { key: 'business_number', header: '사업자번호' },
+  { key: 'representative', header: '대표자' },
+  { key: 'contact_name', header: '담당자' },
+  { key: 'contact_phone', header: '연락처' },
+  { key: 'email', header: '이메일' },
+  { key: 'address', header: '주소' },
+  { key: 'address_detail', header: '상세주소' },
+  { key: 'program_types', header: '프로그램 유형' },
+  { key: 'description', header: '설명' },
+  { key: 'status', header: '상태' },
+  { key: 'memo', header: '메모' },
+  { key: 'created_at', header: '등록일' },
+] as const
+
+// 입점문의 데이터 엑셀 형식으로 변환
+const PARTNER_INQUIRY_STATUS_KR: Record<string, string> = {
+  pending: '대기중',
+  approved: '처리완료',
+}
+
+export function formatPartnerInquiriesForExcel(inquiries: PartnerInquiryForExcel[]) {
+  return inquiries.map((i) => ({
+    ...i,
+    status: PARTNER_INQUIRY_STATUS_KR[i.status] || i.status,
+  }))
+}
+
+interface PartnerInquiryForExcel {
+  name: string
+  business_number: string
+  representative: string
+  contact_name: string
+  contact_phone: string
+  email: string
+  address?: string | null
+  address_detail?: string | null
+  program_types?: string | null
+  description?: string | null
+  status: string
+  memo?: string | null
+  created_at: string
+}
+
 // 사업주 엑셀 업로드용 컬럼 정의 (필수 필드)
 export const VENDOR_UPLOAD_COLUMNS = [
   { key: 'id', header: 'ID', required: false }, // ID가 있으면 수정, 없으면 신규

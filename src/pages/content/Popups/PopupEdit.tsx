@@ -4,7 +4,6 @@ import { Typography, Spin, message } from 'antd'
 
 import { getPopup, updatePopup } from '@/services/popupService'
 import { PopupForm } from '@/components/PopupForm'
-import type { PopupPosition } from '@/types'
 
 const { Text } = Typography
 
@@ -26,15 +25,13 @@ export function PopupEditPage() {
         content: values.content as string | null | undefined,
         image_url: values.image_url as string | null | undefined,
         link_url: values.link_url as string | null | undefined,
-        position: values.position as PopupPosition,
-        width: values.width as number | null | undefined,
-        height: values.height as number | null | undefined,
         start_date: values.start_date as string,
         end_date: values.end_date as string,
         is_visible: values.is_visible as boolean,
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['popup', id] })
+      queryClient.invalidateQueries({ queryKey: ['popups'] })
       message.success('팝업이 수정되었습니다')
       navigate(`/content/popups/${id}`)
     },

@@ -12,42 +12,42 @@ export type Database = {
       ad_banners: {
         Row: {
           advertiser_name: string
-          created_at: string
+          created_at: string | null
           end_date: string | null
           id: string
           image_url: string
-          is_visible: boolean
+          is_visible: boolean | null
           link_url: string
-          sort_order: number
+          sort_order: number | null
           start_date: string | null
           title: string
-          updated_at: string
+          updated_at: string | null
         }
         Insert: {
           advertiser_name: string
-          created_at?: string
+          created_at?: string | null
           end_date?: string | null
           id?: string
           image_url: string
-          is_visible?: boolean
+          is_visible?: boolean | null
           link_url: string
-          sort_order?: number
+          sort_order?: number | null
           start_date?: string | null
           title: string
-          updated_at?: string
+          updated_at?: string | null
         }
         Update: {
           advertiser_name?: string
-          created_at?: string
+          created_at?: string | null
           end_date?: string | null
           id?: string
           image_url?: string
-          is_visible?: boolean
+          is_visible?: boolean | null
           link_url?: string
-          sort_order?: number
+          sort_order?: number | null
           start_date?: string | null
           title?: string
-          updated_at?: string
+          updated_at?: string | null
         }
         Relationships: []
       }
@@ -173,6 +173,53 @@ export type Database = {
         }
         Relationships: []
       }
+      business_owner_documents: {
+        Row: {
+          business_owner_id: string
+          created_at: string | null
+          document_type: string
+          file_name: string
+          file_size: number | null
+          file_url: string
+          id: string
+          mime_type: string | null
+          sort_order: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          business_owner_id: string
+          created_at?: string | null
+          document_type: string
+          file_name: string
+          file_size?: number | null
+          file_url: string
+          id?: string
+          mime_type?: string | null
+          sort_order?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          business_owner_id?: string
+          created_at?: string | null
+          document_type?: string
+          file_name?: string
+          file_size?: number | null
+          file_url?: string
+          id?: string
+          mime_type?: string | null
+          sort_order?: number | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "business_owner_documents_business_owner_id_fkey"
+            columns: ["business_owner_id"]
+            isOneToOne: false
+            referencedRelation: "business_owners"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       business_owners: {
         Row: {
           address: string
@@ -292,8 +339,10 @@ export type Database = {
       }
       categories: {
         Row: {
+          banner_url: string | null
           created_at: string
           depth: number
+          icon_url: string | null
           id: string
           is_active: boolean
           name: string
@@ -302,8 +351,10 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          banner_url?: string | null
           created_at?: string
           depth: number
+          icon_url?: string | null
           id?: string
           is_active?: boolean
           name: string
@@ -312,8 +363,10 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          banner_url?: string | null
           created_at?: string
           depth?: number
+          icon_url?: string | null
           id?: string
           is_active?: boolean
           name?: string
@@ -379,6 +432,53 @@ export type Database = {
           },
         ]
       }
+      daycare_documents: {
+        Row: {
+          created_at: string | null
+          daycare_id: string
+          document_type: string
+          file_name: string
+          file_size: number | null
+          file_url: string
+          id: string
+          mime_type: string | null
+          sort_order: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          daycare_id: string
+          document_type: string
+          file_name: string
+          file_size?: number | null
+          file_url: string
+          id?: string
+          mime_type?: string | null
+          sort_order?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          daycare_id?: string
+          document_type?: string
+          file_name?: string
+          file_size?: number | null
+          file_url?: string
+          id?: string
+          mime_type?: string | null
+          sort_order?: number | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "daycare_documents_daycare_id_fkey"
+            columns: ["daycare_id"]
+            isOneToOne: false
+            referencedRelation: "daycares"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       daycare_memos: {
         Row: {
           admin_id: string
@@ -435,6 +535,11 @@ export type Database = {
           name: string
           rejection_reason: string | null
           representative: string | null
+          revision_file: string | null
+          revision_reason: string | null
+          revision_requested_at: string | null
+          revision_response: string | null
+          revision_submitted_at: string | null
           status: string
           tel: string | null
           updated_at: string
@@ -456,6 +561,11 @@ export type Database = {
           name: string
           rejection_reason?: string | null
           representative?: string | null
+          revision_file?: string | null
+          revision_reason?: string | null
+          revision_requested_at?: string | null
+          revision_response?: string | null
+          revision_submitted_at?: string | null
           status?: string
           tel?: string | null
           updated_at?: string
@@ -477,6 +587,11 @@ export type Database = {
           name?: string
           rejection_reason?: string | null
           representative?: string | null
+          revision_file?: string | null
+          revision_reason?: string | null
+          revision_requested_at?: string | null
+          revision_response?: string | null
+          revision_submitted_at?: string | null
           status?: string
           tel?: string | null
           updated_at?: string
@@ -571,71 +686,44 @@ export type Database = {
           },
         ]
       }
-      partner_inquiries: {
+      legal_documents: {
         Row: {
-          address: string | null
-          address_detail: string | null
-          business_number: string
-          contact_name: string
-          contact_phone: string
+          category: string
+          content: string
           created_at: string
-          description: string | null
-          email: string
+          created_by: string | null
           id: string
-          name: string
-          program_types: string | null
-          rejection_reason: string | null
-          representative: string
-          reviewed_at: string | null
-          reviewed_by: string | null
-          status: string
+          is_visible: boolean
+          title: string
           updated_at: string
-          zipcode: string | null
+          version: number
         }
         Insert: {
-          address?: string | null
-          address_detail?: string | null
-          business_number: string
-          contact_name: string
-          contact_phone: string
+          category: string
+          content: string
           created_at?: string
-          description?: string | null
-          email: string
+          created_by?: string | null
           id?: string
-          name: string
-          program_types?: string | null
-          rejection_reason?: string | null
-          representative: string
-          reviewed_at?: string | null
-          reviewed_by?: string | null
-          status?: string
+          is_visible?: boolean
+          title: string
           updated_at?: string
-          zipcode?: string | null
+          version?: number
         }
         Update: {
-          address?: string | null
-          address_detail?: string | null
-          business_number?: string
-          contact_name?: string
-          contact_phone?: string
+          category?: string
+          content?: string
           created_at?: string
-          description?: string | null
-          email?: string
+          created_by?: string | null
           id?: string
-          name?: string
-          program_types?: string | null
-          rejection_reason?: string | null
-          representative?: string
-          reviewed_at?: string | null
-          reviewed_by?: string | null
-          status?: string
+          is_visible?: boolean
+          title?: string
           updated_at?: string
-          zipcode?: string | null
+          version?: number
         }
         Relationships: [
           {
-            foreignKeyName: "partner_inquiries_reviewed_by_fkey"
-            columns: ["reviewed_by"]
+            foreignKeyName: "legal_documents_created_by_fkey"
+            columns: ["created_by"]
             isOneToOne: false
             referencedRelation: "admins"
             referencedColumns: ["id"]
@@ -680,6 +768,134 @@ export type Database = {
           {
             foreignKeyName: "notices_created_by_fkey"
             columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "admins"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      notification_logs: {
+        Row: {
+          aligo_response: Json | null
+          created_at: string | null
+          error_message: string | null
+          id: string
+          message_content: string | null
+          notification_type: string
+          recipient_id: string | null
+          recipient_phone: string
+          recipient_type: string
+          reference_id: string | null
+          reference_type: string | null
+          sent_at: string | null
+          status: string
+          template_code: string
+          variables: Json | null
+        }
+        Insert: {
+          aligo_response?: Json | null
+          created_at?: string | null
+          error_message?: string | null
+          id?: string
+          message_content?: string | null
+          notification_type: string
+          recipient_id?: string | null
+          recipient_phone: string
+          recipient_type: string
+          reference_id?: string | null
+          reference_type?: string | null
+          sent_at?: string | null
+          status?: string
+          template_code: string
+          variables?: Json | null
+        }
+        Update: {
+          aligo_response?: Json | null
+          created_at?: string | null
+          error_message?: string | null
+          id?: string
+          message_content?: string | null
+          notification_type?: string
+          recipient_id?: string | null
+          recipient_phone?: string
+          recipient_type?: string
+          reference_id?: string | null
+          reference_type?: string | null
+          sent_at?: string | null
+          status?: string
+          template_code?: string
+          variables?: Json | null
+        }
+        Relationships: []
+      }
+      partner_inquiries: {
+        Row: {
+          address: string | null
+          address_detail: string | null
+          business_number: string
+          contact_name: string
+          contact_phone: string
+          created_at: string
+          description: string | null
+          email: string
+          id: string
+          memo: string | null
+          name: string
+          program_types: string | null
+          rejection_reason: string | null
+          representative: string
+          reviewed_at: string | null
+          reviewed_by: string | null
+          status: string
+          updated_at: string
+          zipcode: string | null
+        }
+        Insert: {
+          address?: string | null
+          address_detail?: string | null
+          business_number: string
+          contact_name: string
+          contact_phone: string
+          created_at?: string
+          description?: string | null
+          email: string
+          id?: string
+          memo?: string | null
+          name: string
+          program_types?: string | null
+          rejection_reason?: string | null
+          representative: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          updated_at?: string
+          zipcode?: string | null
+        }
+        Update: {
+          address?: string | null
+          address_detail?: string | null
+          business_number?: string
+          contact_name?: string
+          contact_phone?: string
+          created_at?: string
+          description?: string | null
+          email?: string
+          id?: string
+          memo?: string | null
+          name?: string
+          program_types?: string | null
+          rejection_reason?: string | null
+          representative?: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          updated_at?: string
+          zipcode?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "partner_inquiries_reviewed_by_fkey"
+            columns: ["reviewed_by"]
             isOneToOne: false
             referencedRelation: "admins"
             referencedColumns: ["id"]
@@ -988,6 +1204,42 @@ export type Database = {
           },
         ]
       }
+      recent_views: {
+        Row: {
+          daycare_id: string
+          id: string
+          product_id: string
+          viewed_at: string
+        }
+        Insert: {
+          daycare_id: string
+          id?: string
+          product_id: string
+          viewed_at?: string
+        }
+        Update: {
+          daycare_id?: string
+          id?: string
+          product_id?: string
+          viewed_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "recent_views_daycare_id_fkey"
+            columns: ["daycare_id"]
+            isOneToOne: false
+            referencedRelation: "daycares"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recent_views_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       refunds: {
         Row: {
           admin_memo: string | null
@@ -1052,6 +1304,92 @@ export type Database = {
           },
         ]
       }
+      regions: {
+        Row: {
+          created_at: string
+          depth: number
+          full_name: string
+          id: string
+          is_active: boolean
+          is_popular: boolean
+          name: string
+          parent_id: string | null
+          sort_order: number
+        }
+        Insert: {
+          created_at?: string
+          depth: number
+          full_name: string
+          id?: string
+          is_active?: boolean
+          is_popular?: boolean
+          name: string
+          parent_id?: string | null
+          sort_order?: number
+        }
+        Update: {
+          created_at?: string
+          depth?: number
+          full_name?: string
+          id?: string
+          is_active?: boolean
+          is_popular?: boolean
+          name?: string
+          parent_id?: string | null
+          sort_order?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "regions_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "regions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      reservation_holds: {
+        Row: {
+          created_at: string
+          daycare_id: string
+          expires_at: string
+          id: string
+          product_id: string
+          reserved_date: string
+        }
+        Insert: {
+          created_at?: string
+          daycare_id: string
+          expires_at?: string
+          id?: string
+          product_id: string
+          reserved_date: string
+        }
+        Update: {
+          created_at?: string
+          daycare_id?: string
+          expires_at?: string
+          id?: string
+          product_id?: string
+          reserved_date?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reservation_holds_daycare_id_fkey"
+            columns: ["daycare_id"]
+            isOneToOne: false
+            referencedRelation: "daycares"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reservation_holds_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       reservation_options: {
         Row: {
           created_at: string
@@ -1111,6 +1449,9 @@ export type Database = {
           reservation_number: string
           reserved_date: string
           reserved_time: string | null
+          reserver_email: string | null
+          reserver_name: string | null
+          reserver_phone: string | null
           status: string
           total_amount: number
           updated_at: string
@@ -1128,6 +1469,9 @@ export type Database = {
           reservation_number: string
           reserved_date: string
           reserved_time?: string | null
+          reserver_email?: string | null
+          reserver_name?: string | null
+          reserver_phone?: string | null
           status?: string
           total_amount: number
           updated_at?: string
@@ -1145,6 +1489,9 @@ export type Database = {
           reservation_number?: string
           reserved_date?: string
           reserved_time?: string | null
+          reserver_email?: string | null
+          reserver_name?: string | null
+          reserver_phone?: string | null
           status?: string
           total_amount?: number
           updated_at?: string
@@ -1215,7 +1562,7 @@ export type Database = {
           is_visible: boolean
           product_id: string
           rating: number
-          reservation_id: string
+          reservation_id: string | null
           updated_at: string
         }
         Insert: {
@@ -1227,7 +1574,7 @@ export type Database = {
           is_visible?: boolean
           product_id: string
           rating: number
-          reservation_id: string
+          reservation_id?: string | null
           updated_at?: string
         }
         Update: {
@@ -1239,7 +1586,7 @@ export type Database = {
           is_visible?: boolean
           product_id?: string
           rating?: number
-          reservation_id?: string
+          reservation_id?: string | null
           updated_at?: string
         }
         Relationships: [
@@ -1405,58 +1752,25 @@ export type Database = {
           },
         ]
       }
-      legal_documents: {
-        Row: {
-          id: string
-          category: string
-          title: string
-          content: string
-          version: number
-          is_visible: boolean
-          created_by: string | null
-          created_at: string
-          updated_at: string
-        }
-        Insert: {
-          id?: string
-          category: string
-          title: string
-          content: string
-          version?: number
-          is_visible?: boolean
-          created_by?: string | null
-          created_at?: string
-          updated_at?: string
-        }
-        Update: {
-          id?: string
-          category?: string
-          title?: string
-          content?: string
-          version?: number
-          is_visible?: boolean
-          created_by?: string | null
-          created_at?: string
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "legal_documents_created_by_fkey"
-            columns: ["created_by"]
-            isOneToOne: false
-            referencedRelation: "admins"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
+      auto_complete_reservations: { Args: Record<PropertyKey, never>; Returns: number }
+      check_reservation_available: {
+        Args: { p_product_id: string; p_reserved_date: string }
+        Returns: Json
+      }
+      cleanup_expired_holds: { Args: Record<PropertyKey, never>; Returns: undefined }
+      get_unavailable_dates: {
+        Args: { p_product_id: string }
+        Returns: string[]
+      }
       get_user_role: { Args: Record<PropertyKey, never>; Returns: string }
       is_business_owner: { Args: Record<PropertyKey, never>; Returns: boolean }
       is_daycare: { Args: Record<PropertyKey, never>; Returns: boolean }
+      send_alimtalk_http: { Args: { p_body: string }; Returns: Json }
     }
     Enums: {
       [_ in never]: never

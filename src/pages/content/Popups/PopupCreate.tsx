@@ -1,15 +1,15 @@
 import { useNavigate } from 'react-router-dom'
-import { useMutation } from '@tanstack/react-query'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { Typography, message } from 'antd'
 
 import { createPopup } from '@/services/popupService'
 import { PopupForm } from '@/components/PopupForm'
-import type { PopupPosition } from '@/types'
 
 const { Text } = Typography
 
 export function PopupCreatePage() {
   const navigate = useNavigate()
+  const queryClient = useQueryClient()
 
   const mutation = useMutation({
     mutationFn: (values: Record<string, unknown>) =>
@@ -18,14 +18,12 @@ export function PopupCreatePage() {
         content: values.content as string | undefined,
         image_url: values.image_url as string | undefined,
         link_url: values.link_url as string | undefined,
-        position: values.position as PopupPosition,
-        width: values.width as number | undefined,
-        height: values.height as number | undefined,
         start_date: values.start_date as string,
         end_date: values.end_date as string,
         is_visible: values.is_visible as boolean,
       }),
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['popups'] })
       message.success('팝업이 등록되었습니다')
       navigate('/content/popups')
     },

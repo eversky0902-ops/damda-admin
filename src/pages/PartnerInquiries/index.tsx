@@ -1,23 +1,38 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useQuery } from '@tanstack/react-query'
-import { Table, Button, Input, Select, Tag } from 'antd'
-import { SearchOutlined } from '@ant-design/icons'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { Table, Button, Input, Select, Tag, message, Popconfirm, Space, Dropdown } from 'antd'
+import { SearchOutlined, DeleteOutlined, CheckOutlined, DownloadOutlined } from '@ant-design/icons'
 import type { ColumnsType, TablePaginationConfig } from 'antd/es/table'
+import type { MenuProps } from 'antd'
 import dayjs from 'dayjs'
 
-import { getPartnerInquiries } from '@/services/partnerInquiryService'
+import {
+  getPartnerInquiries,
+  getAllPartnerInquiries,
+  deletePartnerInquiries,
+  bulkUpdatePartnerInquiryStatus,
+} from '@/services/partnerInquiryService'
+import { useAuthStore } from '@/stores/authStore'
 import { formatPhoneNumber } from '@/utils/format'
+import {
+  downloadExcel,
+  PARTNER_INQUIRY_EXCEL_COLUMNS,
+  formatPartnerInquiriesForExcel,
+} from '@/utils/excel'
 import { PARTNER_INQUIRY_STATUS_LABEL, PARTNER_INQUIRY_STATUS_COLOR, DEFAULT_PAGE_SIZE, DATE_FORMAT } from '@/constants'
 import type { PartnerInquiry, PartnerInquiryStatus } from '@/types'
 
 export function PartnerInquiriesPage() {
   const navigate = useNavigate()
+  const queryClient = useQueryClient()
+  const { admin } = useAuthStore()
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE)
   const [search, setSearch] = useState('')
   const [searchInput, setSearchInput] = useState('')
   const [statusFilter, setStatusFilter] = useState<PartnerInquiryStatus | 'all'>('all')
+  const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([])
 
   const { data, isLoading } = useQuery({
     queryKey: ['partner-inquiries', page, pageSize, search, statusFilter],
@@ -30,6 +45,31 @@ export function PartnerInquiriesPage() {
       }),
   })
 
+  const deleteMutation = useMutation({
+    mutationFn: (ids: string[]) => deletePartnerInquiries(ids),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['partner-inquiries'] })
+      message.success(`${selectedRowKeys.length}건이 삭제되었습니다`)
+      setSelectedRowKeys([])
+    },
+    onError: () => {
+      message.error('삭제에 실패했습니다')
+    },
+  })
+
+  const statusMutation = useMutation({
+    mutationFn: ({ ids, status }: { ids: string[]; status: PartnerInquiryStatus }) =>
+      bulkUpdatePartnerInquiryStatus(ids, status, admin?.id || ''),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['partner-inquiries'] })
+      message.success(`${selectedRowKeys.length}건의 상태가 변경되었습니다`)
+      setSelectedRowKeys([])
+    },
+    onError: () => {
+      message.error('상태 변경에 실패했습니다')
+    },
+  })
+
   const handleSearch = () => {
     setSearch(searchInput)
     setPage(1)
@@ -39,6 +79,45 @@ export function PartnerInquiriesPage() {
     setPage(pagination.current || 1)
     setPageSize(pagination.pageSize || DEFAULT_PAGE_SIZE)
   }
+
+  // 엑셀 다운로드 (전체)
+  const handleDownloadAll = async () => {
+    try {
+      message.loading({ content: '다운로드 준비 중...', key: 'download' })
+      const allData = await getAllPartnerInquiries()
+      const formatted = formatPartnerInquiriesForExcel(allData)
+      downloadExcel(formatted, PARTNER_INQUIRY_EXCEL_COLUMNS, '입점문의_전체목록')
+      message.success({ content: `엑셀 다운로드 완료 (${allData.length}건)`, key: 'download' })
+    } catch {
+      message.error({ content: '다운로드에 실패했습니다', key: 'download' })
+    }
+  }
+
+  // 엑셀 다운로드 (현재 목록)
+  const handleDownloadCurrent = () => {
+    if (!data?.data.length) {
+      message.warning('다운로드할 데이터가 없습니다')
+      return
+    }
+    const formatted = formatPartnerInquiriesForExcel(data.data)
+    downloadExcel(formatted, PARTNER_INQUIRY_EXCEL_COLUMNS, '입점문의_목록')
+    message.success('엑셀 다운로드가 완료되었습니다')
+  }
+
+  const downloadMenuItems: MenuProps['items'] = [
+    {
+      key: 'current',
+      label: '현재 목록 다운로드',
+      icon: <DownloadOutlined />,
+      onClick: handleDownloadCurrent,
+    },
+    {
+      key: 'all',
+      label: '전체 목록 다운로드',
+      icon: <DownloadOutlined />,
+      onClick: handleDownloadAll,
+    },
+  ]
 
   const columns: ColumnsType<PartnerInquiry> = [
     {
@@ -90,10 +169,15 @@ export function PartnerInquiriesPage() {
     },
   ]
 
+  const hasSelected = selectedRowKeys.length > 0
+
   return (
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 16 }}>
         <h2 style={{ margin: 0 }}>입점문의 관리</h2>
+        <Dropdown menu={{ items: downloadMenuItems }} placement="bottomRight">
+          <Button icon={<DownloadOutlined />}>엑셀 다운로드</Button>
+        </Dropdown>
       </div>
 
       <div style={{
@@ -128,6 +212,41 @@ export function PartnerInquiriesPage() {
         <Button type="primary" onClick={handleSearch}>
           검색
         </Button>
+
+        {hasSelected && (
+          <Space style={{ marginLeft: 'auto' }}>
+            <span style={{ fontSize: 13, color: '#666' }}>{selectedRowKeys.length}건 선택</span>
+            <Popconfirm
+              title="상태 변경"
+              description="선택한 항목을 처리완료로 변경하시겠습니까?"
+              onConfirm={() => statusMutation.mutate({ ids: selectedRowKeys as string[], status: 'approved' })}
+              okText="변경"
+              cancelText="취소"
+            >
+              <Button
+                icon={<CheckOutlined />}
+                loading={statusMutation.isPending}
+              >
+                처리완료
+              </Button>
+            </Popconfirm>
+            <Popconfirm
+              title="입점문의 삭제"
+              description={`선택한 ${selectedRowKeys.length}건을 삭제하시겠습니까?`}
+              onConfirm={() => deleteMutation.mutate(selectedRowKeys as string[])}
+              okText="삭제"
+              cancelText="취소"
+            >
+              <Button
+                danger
+                icon={<DeleteOutlined />}
+                loading={deleteMutation.isPending}
+              >
+                삭제
+              </Button>
+            </Popconfirm>
+          </Space>
+        )}
       </div>
 
       <Table
@@ -137,6 +256,10 @@ export function PartnerInquiriesPage() {
         loading={isLoading}
         size="small"
         bordered
+        rowSelection={{
+          selectedRowKeys,
+          onChange: (keys) => setSelectedRowKeys(keys),
+        }}
         pagination={{
           current: page,
           pageSize,
@@ -151,6 +274,7 @@ export function PartnerInquiriesPage() {
           style: { cursor: 'pointer' },
         })}
       />
+
     </div>
   )
 }

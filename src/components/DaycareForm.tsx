@@ -232,6 +232,24 @@ export function DaycareForm({
             </Col>
             <Col>
               <Form.Item
+                name="tel"
+                label="대표 전화번호"
+              >
+                <Input
+                  placeholder="숫자만 입력"
+                  style={{ width: 180 }}
+                  onChange={(e) => {
+                    const val = e.target.value.replace(/\D/g, '')
+                    form.setFieldValue('tel', val)
+                  }}
+                />
+              </Form.Item>
+            </Col>
+          </Row>
+
+          <Row gutter={24}>
+            <Col>
+              <Form.Item
                 name="contact_name"
                 label="담당자명"
                 rules={[{ required: true, message: '담당자명을 입력하세요' }]}
@@ -311,21 +329,6 @@ export function DaycareForm({
                   onChange={(e) => {
                     const val = e.target.value.replace(/\D/g, '')
                     form.setFieldValue('license_number', val)
-                  }}
-                />
-              </Form.Item>
-            </Col>
-            <Col>
-              <Form.Item
-                name="tel"
-                label="전화번호"
-              >
-                <Input
-                  placeholder="숫자만 입력"
-                  style={{ width: 180 }}
-                  onChange={(e) => {
-                    const val = e.target.value.replace(/\D/g, '')
-                    form.setFieldValue('tel', val)
                   }}
                 />
               </Form.Item>
