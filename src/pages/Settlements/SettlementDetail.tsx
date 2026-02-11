@@ -208,7 +208,12 @@ export function SettlementDetailPage() {
             {settlement.status === 'completed' ? '정산완료' : '대기중'}
           </Tag>
         </Descriptions.Item>
-        <Descriptions.Item label="정산 기간" span={2}>
+        <Descriptions.Item label="정산월">
+          {settlement.settlement_month
+            ? `${dayjs(settlement.settlement_month + '-01').year()}년 ${dayjs(settlement.settlement_month + '-01').month() + 1}월`
+            : '-'}
+        </Descriptions.Item>
+        <Descriptions.Item label="정산 기간">
           {dayjs(settlement.settlement_period_start).format(DATE_FORMAT)} ~{' '}
           {dayjs(settlement.settlement_period_end).format(DATE_FORMAT)}
         </Descriptions.Item>

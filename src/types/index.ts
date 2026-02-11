@@ -120,6 +120,7 @@ export interface Settlement {
   business_owner_id: string
   settlement_period_start: string
   settlement_period_end: string
+  settlement_month: string | null
   total_sales: number
   commission_amount: number
   commission_rate: number

@@ -1,14 +1,13 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Table, Button, Tag, Select, DatePicker, Input, message, Popconfirm } from 'antd'
-
-const { RangePicker } = DatePicker
-import { PlusOutlined, SearchOutlined, CheckOutlined } from '@ant-design/icons'
+import { Table, Button, Tag, Select, DatePicker, Input, message, Popconfirm, Modal } from 'antd'
+import { PlusOutlined, SearchOutlined, CheckOutlined, ThunderboltOutlined, UnorderedListOutlined, DownloadOutlined } from '@ant-design/icons'
 import type { ColumnsType } from 'antd/es/table'
 import dayjs from 'dayjs'
 
-import { getSettlements, bulkCompleteSettlements, type SettlementWithVendor } from '@/services/settlementService'
+import { getSettlements, bulkCompleteSettlements, bulkGenerateSettlements, type SettlementWithVendor } from '@/services/settlementService'
+import { downloadExcel, formatSettlementsForExcel, SETTLEMENT_LIST_EXCEL_COLUMNS } from '@/utils/excel'
 import { DATE_FORMAT, DEFAULT_PAGE_SIZE } from '@/constants'
 import type { SettlementStatus } from '@/types'
 
@@ -21,27 +20,49 @@ const STATUS_OPTIONS = [
 export function SettlementsPage() {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
-  const [page, setPage] = useState(1)
-  const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE)
   const [status, setStatus] = useState<SettlementStatus | 'all'>('all')
   const [vendorSearch, setVendorSearch] = useState<string>('')
   const [vendorSearchInput, setVendorSearchInput] = useState<string>('')
-  const [dateRange, setDateRange] = useState<[dayjs.Dayjs | null, dayjs.Dayjs | null] | null>(null)
+  const [settlementMonth, setSettlementMonth] = useState<dayjs.Dayjs | null>(dayjs())
+  const [viewAll, setViewAll] = useState(false)
+  const [page, setPage] = useState(1)
+  const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE)
   const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([])
+
+  // 일괄 생성 모달
+  const [generateModalOpen, setGenerateModalOpen] = useState(false)
+  const [generateMonth, setGenerateMonth] = useState<dayjs.Dayjs | null>(dayjs())
 
   // 정산 목록 조회
   const { data, isLoading } = useQuery({
-    queryKey: ['settlements', page, pageSize, status, vendorSearch, dateRange],
+    queryKey: [
+      'settlements',
+      viewAll ? 'all' : settlementMonth?.format('YYYY-MM'),
+      status,
+      vendorSearch,
+      viewAll ? page : null,
+      viewAll ? pageSize : null,
+    ],
     queryFn: () =>
       getSettlements({
-        page,
-        pageSize,
+        ...(viewAll ? { page, pageSize } : {}),
         status,
         vendor_search: vendorSearch,
-        date_from: dateRange?.[0]?.format('YYYY-MM-DD'),
-        date_to: dateRange?.[1]?.format('YYYY-MM-DD'),
+        settlement_month: viewAll ? undefined : (settlementMonth?.format('YYYY-MM') || undefined),
       }),
   })
+
+  // 합계 계산
+  const summary = useMemo(() => {
+    const items = data?.data || []
+    return {
+      totalSales: items.reduce((sum, s) => sum + s.total_sales, 0),
+      totalCommission: items.reduce((sum, s) => sum + s.commission_amount, 0),
+      totalRefund: items.reduce((sum, s) => sum + s.refund_amount, 0),
+      totalSettlement: items.reduce((sum, s) => sum + s.settlement_amount, 0),
+      count: items.length,
+    }
+  }, [data?.data])
 
   const bulkCompleteMutation = useMutation({
     mutationFn: (ids: string[]) => bulkCompleteSettlements(ids),
@@ -55,6 +76,28 @@ export function SettlementsPage() {
     },
   })
 
+  const bulkGenerateMutation = useMutation({
+    mutationFn: (month: string) => bulkGenerateSettlements(month),
+    onSuccess: (result) => {
+      queryClient.invalidateQueries({ queryKey: ['settlements'] })
+      setGenerateModalOpen(false)
+
+      const parts: string[] = []
+      if (result.created > 0) parts.push(`${result.created}건 생성`)
+      if (result.skipped > 0) parts.push(`${result.skipped}건 스킵(이미 존재)`)
+      if (result.errors.length > 0) parts.push(`${result.errors.length}건 오류`)
+
+      if (result.errors.length > 0) {
+        message.warning(`정산 일괄 생성: ${parts.join(', ')}`)
+      } else {
+        message.success(`정산 일괄 생성 완료: ${parts.join(', ')}`)
+      }
+    },
+    onError: (error: Error) => {
+      message.error(error.message || '일괄 생성에 실패했습니다')
+    },
+  })
+
   // 선택된 항목 중 대기중인 것만 필터
   const selectedPendingCount = (data?.data || []).filter(
     (s) => selectedRowKeys.includes(s.id) && s.status === 'pending'
@@ -65,7 +108,26 @@ export function SettlementsPage() {
     setPage(1)
   }
 
+  const handleBulkGenerate = () => {
+    if (!generateMonth) {
+      message.warning('정산월을 선택하세요')
+      return
+    }
+    bulkGenerateMutation.mutate(generateMonth.format('YYYY-MM'))
+  }
+
   const columns: ColumnsType<SettlementWithVendor> = [
+    {
+      title: '정산월',
+      dataIndex: 'settlement_month',
+      key: 'settlement_month',
+      width: 100,
+      render: (month: string | null) => {
+        if (!month) return '-'
+        const d = dayjs(month + '-01')
+        return `${d.year()}년 ${d.month() + 1}월`
+      },
+    },
     {
       title: '사업주',
       key: 'business_owner',
@@ -127,9 +189,17 @@ export function SettlementsPage() {
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 16 }}>
         <h2 style={{ margin: 0 }}>정산 관리</h2>
-        <Button type="primary" icon={<PlusOutlined />} onClick={() => navigate('/settlements/new')}>
-          정산 등록
-        </Button>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <Button
+            icon={<ThunderboltOutlined />}
+            onClick={() => setGenerateModalOpen(true)}
+          >
+            정산 일괄 생성
+          </Button>
+          <Button type="primary" icon={<PlusOutlined />} onClick={() => navigate('/settlements/new')}>
+            정산 등록
+          </Button>
+        </div>
       </div>
 
       <div
@@ -141,6 +211,7 @@ export function SettlementsPage() {
           background: '#fafafa',
           borderRadius: 6,
           flexWrap: 'wrap',
+          alignItems: 'center',
         }}
       >
         <Input
@@ -160,25 +231,40 @@ export function SettlementsPage() {
           style={{ width: 120 }}
           options={STATUS_OPTIONS}
         />
-        <RangePicker
-          value={dateRange}
-          onChange={(dates) => {
-            setDateRange(dates)
-            setPage(1)
-          }}
-          style={{ width: 240 }}
-          placeholder={['시작일', '종료일']}
-          popupClassName="single-calendar-range"
-        />
+        {!viewAll && (
+          <DatePicker
+            picker="month"
+            value={settlementMonth}
+            onChange={(date) => {
+              setSettlementMonth(date)
+            }}
+            style={{ width: 160 }}
+            placeholder="정산월"
+            format="YYYY년 MM월"
+          />
+        )}
         <Button type="primary" onClick={handleVendorSearch}>
           검색
+        </Button>
+        <Button
+          icon={<UnorderedListOutlined />}
+          type={viewAll ? 'primary' : 'default'}
+          ghost={viewAll}
+          onClick={() => {
+            setViewAll(!viewAll)
+            setPage(1)
+            setSelectedRowKeys([])
+          }}
+        >
+          전체 보기
         </Button>
         <Button
           onClick={() => {
             setStatus('all')
             setVendorSearch('')
             setVendorSearchInput('')
-            setDateRange(null)
+            setSettlementMonth(dayjs())
+            setViewAll(false)
             setPage(1)
           }}
         >
@@ -229,7 +315,7 @@ export function SettlementsPage() {
           selectedRowKeys,
           onChange: (keys) => setSelectedRowKeys(keys),
         }}
-        pagination={{
+        pagination={viewAll ? {
           current: page,
           pageSize,
           total: data?.total || 0,
@@ -240,12 +326,99 @@ export function SettlementsPage() {
             setPageSize(ps)
           },
           size: 'small',
-        }}
+        } : false}
         onRow={(record) => ({
           onClick: () => navigate(`/settlements/${record.id}`),
           style: { cursor: 'pointer' },
         })}
       />
+
+      {/* 합계 요약 + 엑셀 다운로드 */}
+      {(data?.data?.length || 0) > 0 && (
+        <div
+          style={{
+            display: 'flex',
+            gap: 24,
+            marginTop: 12,
+            padding: '10px 16px',
+            background: '#f0f5ff',
+            borderRadius: 6,
+            alignItems: 'center',
+            fontSize: 13,
+            justifyContent: 'space-between',
+          }}
+        >
+          <div style={{ display: 'flex', gap: 24, alignItems: 'center' }}>
+            <span>
+              <strong>{summary.count}</strong>건
+            </span>
+            <span>
+              총 매출 <strong>{summary.totalSales.toLocaleString()}</strong>원
+            </span>
+            <span>
+              수수료 <strong>{summary.totalCommission.toLocaleString()}</strong>원
+            </span>
+            <span>
+              환불 <strong>{summary.totalRefund.toLocaleString()}</strong>원
+            </span>
+            <span style={{ color: '#1677ff', fontSize: 14 }}>
+              정산금 합계 <strong>{summary.totalSettlement.toLocaleString()}</strong>원
+            </span>
+          </div>
+          <Button
+            icon={<DownloadOutlined />}
+            size="small"
+            onClick={() => {
+              const items = data?.data || []
+              const formatted = formatSettlementsForExcel(items)
+              const monthLabel = viewAll ? '전체' : (settlementMonth?.format('YYYY-MM') || '')
+              downloadExcel(formatted, SETTLEMENT_LIST_EXCEL_COLUMNS, `정산목록_${monthLabel}`)
+            }}
+          >
+            엑셀 다운로드
+          </Button>
+        </div>
+      )}
+
+      {/* 일괄 생성 모달 */}
+      <Modal
+        title="정산 일괄 생성"
+        open={generateModalOpen}
+        onCancel={() => setGenerateModalOpen(false)}
+        onOk={handleBulkGenerate}
+        okText="일괄 생성"
+        cancelText="취소"
+        confirmLoading={bulkGenerateMutation.isPending}
+      >
+        <div style={{ marginBottom: 16 }}>
+          <p style={{ marginBottom: 8, color: '#666' }}>
+            정산월을 선택하면 해당 월의 <strong>전월 1일~말일</strong> 이용 완료 예약을 기준으로
+            모든 활성 사업주에 대해 정산을 자동 생성합니다.
+          </p>
+          <p style={{ marginBottom: 16, color: '#666', fontSize: 13 }}>
+            이미 해당 월에 정산이 존재하는 사업주는 자동으로 스킵됩니다.
+          </p>
+        </div>
+        <div>
+          <span style={{ marginRight: 8 }}>정산월:</span>
+          <DatePicker
+            picker="month"
+            value={generateMonth}
+            onChange={(date) => setGenerateMonth(date)}
+            style={{ width: 200 }}
+            format="YYYY년 MM월"
+          />
+          {generateMonth && (
+            <div style={{ marginTop: 12, padding: 12, background: '#f0f5ff', borderRadius: 6, fontSize: 13 }}>
+              <strong>정산 대상 기간:</strong>{' '}
+              {generateMonth.subtract(1, 'month').startOf('month').format('YYYY.MM.DD')} ~{' '}
+              {generateMonth.subtract(1, 'month').endOf('month').format('YYYY.MM.DD')}
+              <br />
+              <strong>정산일:</strong> {generateMonth.format('YYYY')}년 {generateMonth.format('MM')}월 10일
+            </div>
+          )}
+        </div>
+      </Modal>
     </div>
   )
 }

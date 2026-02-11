@@ -10,7 +10,6 @@ import { DATE_FORMAT } from '@/constants'
 import type { Settlement } from '@/types'
 
 const { Text } = Typography
-const { RangePicker } = DatePicker
 
 function SectionHeader({ icon, title, description }: { icon: React.ReactNode; title: string; description: string }) {
   return (
@@ -42,9 +41,17 @@ export function SettlementForm({
   const [form] = Form.useForm()
   const isEdit = mode === 'edit'
 
-  // 선택된 사업주와 기간
+  // 선택된 사업주와 정산월
   const [selectedVendorId, setSelectedVendorId] = useState<string | undefined>(initialValues?.business_owner_id)
-  const [selectedPeriod, setSelectedPeriod] = useState<[dayjs.Dayjs, dayjs.Dayjs] | null>(null)
+  const [selectedMonth, setSelectedMonth] = useState<dayjs.Dayjs | null>(null)
+
+  // 정산월에서 자동 계산된 기간
+  const periodRange = useMemo(() => {
+    if (!selectedMonth) return null
+    const periodStart = selectedMonth.subtract(1, 'month').startOf('month')
+    const periodEnd = selectedMonth.subtract(1, 'month').endOf('month')
+    return { start: periodStart, end: periodEnd }
+  }, [selectedMonth])
 
   // 사업주 목록 조회 (정산에서는 비활성 사업주도 포함)
   const { data: vendors = [] } = useQuery({
@@ -54,13 +61,13 @@ export function SettlementForm({
 
   // 결제 내역 조회
   const { data: paymentData, isLoading: paymentsLoading } = useQuery({
-    queryKey: ['paymentsForSettlement', selectedVendorId, selectedPeriod?.[0]?.format('YYYY-MM-DD'), selectedPeriod?.[1]?.format('YYYY-MM-DD')],
+    queryKey: ['paymentsForSettlement', selectedVendorId, periodRange?.start.format('YYYY-MM-DD'), periodRange?.end.format('YYYY-MM-DD')],
     queryFn: () => getPaymentsForSettlement(
       selectedVendorId!,
-      selectedPeriod![0].format('YYYY-MM-DD'),
-      selectedPeriod![1].format('YYYY-MM-DD')
+      periodRange!.start.format('YYYY-MM-DD'),
+      periodRange!.end.format('YYYY-MM-DD')
     ),
-    enabled: !!selectedVendorId && !!selectedPeriod,
+    enabled: !!selectedVendorId && !!periodRange,
   })
 
   // 폼 값 감시
@@ -80,14 +87,17 @@ export function SettlementForm({
     if (initialValues) {
       const formValues: Record<string, unknown> = { ...initialValues }
 
-      // 날짜 범위 설정
-      if (initialValues.settlement_period_start && initialValues.settlement_period_end) {
-        const period: [dayjs.Dayjs, dayjs.Dayjs] = [
-          dayjs(initialValues.settlement_period_start),
-          dayjs(initialValues.settlement_period_end),
-        ]
-        formValues.period = period
-        setSelectedPeriod(period)
+      // 정산월 설정
+      if (initialValues.settlement_month) {
+        const month = dayjs(initialValues.settlement_month + '-01')
+        formValues.settlement_month_picker = month
+        setSelectedMonth(month)
+      } else if (initialValues.settlement_period_start && initialValues.settlement_period_end) {
+        // settlement_month가 없으면 period_end에서 추출
+        const endDate = dayjs(initialValues.settlement_period_end)
+        const month = endDate.add(1, 'month').startOf('month')
+        formValues.settlement_month_picker = month
+        setSelectedMonth(month)
       }
 
       form.setFieldsValue(formValues)
@@ -113,20 +123,16 @@ export function SettlementForm({
     }
   }
 
-  // 기간 변경 시
-  const handlePeriodChange = (dates: [dayjs.Dayjs | null, dayjs.Dayjs | null] | null) => {
-    if (dates && dates[0] && dates[1]) {
-      setSelectedPeriod([dates[0], dates[1]])
-    } else {
-      setSelectedPeriod(null)
-    }
+  // 정산월 변경 시
+  const handleMonthChange = (date: dayjs.Dayjs | null) => {
+    setSelectedMonth(date)
   }
 
   const handleSubmit = async () => {
     try {
       const values = await form.validateFields()
 
-      // 기간 데이터 변환
+      // 기간 데이터 변환 (정산월에서 자동 계산)
       const submitData: Record<string, unknown> = {
         business_owner_id: values.business_owner_id,
         total_sales: values.total_sales,
@@ -134,9 +140,13 @@ export function SettlementForm({
         refund_amount: values.refund_amount || 0,
       }
 
-      if (values.period && values.period.length === 2) {
-        submitData.settlement_period_start = values.period[0].format('YYYY-MM-DD')
-        submitData.settlement_period_end = values.period[1].format('YYYY-MM-DD')
+      if (periodRange) {
+        submitData.settlement_period_start = periodRange.start.format('YYYY-MM-DD')
+        submitData.settlement_period_end = periodRange.end.format('YYYY-MM-DD')
+      }
+
+      if (selectedMonth) {
+        submitData.settlement_month = selectedMonth.format('YYYY-MM')
       }
 
       onSubmit(submitData)
@@ -244,7 +254,7 @@ export function SettlementForm({
           <SectionHeader
             icon={<CalendarOutlined />}
             title="정산 기본 정보"
-            description="정산할 사업주와 정산 기간을 선택하면 결제 내역이 자동으로 조회됩니다."
+            description="사업주와 정산월을 선택하면 전월 이용 완료 예약 기준으로 결제 내역이 자동 조회됩니다."
           />
 
           <Row gutter={24}>
@@ -270,15 +280,18 @@ export function SettlementForm({
             </Col>
             <Col>
               <Form.Item
-                name="period"
-                label="정산 기간"
-                rules={[{ required: true, message: '정산 기간을 선택하세요' }]}
+                name="settlement_month_picker"
+                label="정산월"
+                rules={[{ required: true, message: '정산월을 선택하세요' }]}
+                extra={periodRange ? `정산 대상 기간: ${periodRange.start.format(DATE_FORMAT)} ~ ${periodRange.end.format(DATE_FORMAT)}` : undefined}
               >
-                <RangePicker
-                  style={{ width: 280 }}
-                  placeholder={['시작일', '종료일']}
-                  popupClassName="single-calendar-range"
-                  onChange={handlePeriodChange}
+                <DatePicker
+                  picker="month"
+                  style={{ width: 200 }}
+                  format="YYYY년 MM월"
+                  placeholder="정산월 선택"
+                  onChange={handleMonthChange}
+                  disabled={isEdit}
                 />
               </Form.Item>
             </Col>
@@ -289,7 +302,7 @@ export function SettlementForm({
           <SectionHeader
             icon={<DollarOutlined />}
             title="정산 금액 정보"
-            description="기간 선택 시 결제 내역 기반으로 자동 계산됩니다. 필요시 직접 수정할 수 있습니다."
+            description="정산월 선택 시 이용 완료 예약의 결제 내역 기반으로 자동 계산됩니다. 필요시 직접 수정할 수 있습니다."
           />
 
           <Row gutter={24}>
@@ -383,12 +396,12 @@ export function SettlementForm({
         </Card>
 
         {/* 결제 내역 */}
-        {selectedVendorId && selectedPeriod && (
+        {selectedVendorId && periodRange && (
           <Card style={{ marginBottom: 24 }}>
             <SectionHeader
               icon={<FileSearchOutlined />}
               title="결제 내역"
-              description={`${selectedPeriod[0].format(DATE_FORMAT)} ~ ${selectedPeriod[1].format(DATE_FORMAT)} 기간의 결제 내역입니다.`}
+              description={`${periodRange.start.format(DATE_FORMAT)} ~ ${periodRange.end.format(DATE_FORMAT)} 기간의 이용 완료 예약 결제 내역입니다.`}
             />
 
             {paymentsLoading ? (

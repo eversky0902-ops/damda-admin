@@ -1,3 +1,5 @@
+import dayjs from 'dayjs'
+
 import { supabase } from '@/lib/supabase'
 import type { Settlement, SettlementStatus, PaginationParams } from '@/types'
 
@@ -5,14 +7,14 @@ export interface SettlementFilter {
   status?: SettlementStatus | 'all'
   business_owner_id?: string | 'all'
   vendor_search?: string
-  date_from?: string
-  date_to?: string
+  settlement_month?: string // 'YYYY-MM' 형식
 }
 
 export interface SettlementCreateInput {
   business_owner_id: string
   settlement_period_start: string
   settlement_period_end: string
+  settlement_month?: string
   total_sales: number
   commission_rate: number
   refund_amount?: number
@@ -40,11 +42,9 @@ export interface SettlementWithVendor extends Settlement {
 
 // 정산 목록 조회
 export async function getSettlements(
-  params: PaginationParams & SettlementFilter
+  params: Partial<PaginationParams> & SettlementFilter
 ): Promise<{ data: SettlementWithVendor[]; total: number }> {
-  const { page, pageSize, status, business_owner_id, vendor_search, date_from, date_to } = params
-  const from = (page - 1) * pageSize
-  const to = from + pageSize - 1
+  const { page, pageSize, status, business_owner_id, vendor_search, settlement_month } = params
 
   let query = supabase
     .from('settlements')
@@ -76,16 +76,22 @@ export async function getSettlements(
     }
   }
 
-  // 기간 필터
-  if (date_from) {
-    query = query.gte('settlement_period_start', date_from)
-  }
-  if (date_to) {
-    query = query.lte('settlement_period_end', date_to)
+  // 정산월 필터
+  if (settlement_month) {
+    query = query.eq('settlement_month', settlement_month)
   }
 
-  // 정렬 및 페이지네이션
-  query = query.order('settlement_period_end', { ascending: false }).range(from, to)
+  // 정렬
+  query = query
+    .order('settlement_month', { ascending: false, nullsFirst: false })
+    .order('created_at', { ascending: false })
+
+  // 페이지네이션 (page/pageSize가 있을 때만)
+  if (page && pageSize) {
+    const from = (page - 1) * pageSize
+    const to = from + pageSize - 1
+    query = query.range(from, to)
+  }
 
   const { data, error, count } = await query
 
@@ -114,7 +120,7 @@ export async function getSettlement(id: string): Promise<SettlementWithVendor> {
     throw new Error(error.message)
   }
 
-  return data as SettlementWithVendor
+  return data as unknown as SettlementWithVendor
 }
 
 // 정산 생성
@@ -130,6 +136,7 @@ export async function createSettlement(input: SettlementCreateInput): Promise<Se
       business_owner_id: input.business_owner_id,
       settlement_period_start: input.settlement_period_start,
       settlement_period_end: input.settlement_period_end,
+      settlement_month: input.settlement_month || null,
       total_sales: input.total_sales,
       commission_rate: input.commission_rate,
       commission_amount,
@@ -278,7 +285,7 @@ export async function getPaymentsForSettlement(
   dateFrom: string,
   dateTo: string
 ): Promise<SettlementPaymentSummary> {
-  // 해당 기간의 예약에 대한 결제 내역 조회
+  // 해당 기간의 이용 완료된 예약에 대한 결제 내역 조회
   const { data, error } = await supabase
     .from('payments')
     .select(`
@@ -308,8 +315,10 @@ export async function getPaymentsForSettlement(
 
   const payments = (data || []) as unknown as SettlementPayment[]
 
-  // 매출 합계 (결제 완료된 것)
-  const paidPayments = payments.filter(p => p.status === 'paid')
+  // 매출 합계 (결제 완료 + 이용 완료된 예약)
+  const paidPayments = payments.filter(
+    p => p.status === 'paid' && p.reservation?.status === 'completed'
+  )
   const totalSales = paidPayments.reduce((sum, p) => sum + p.amount, 0)
 
   // 환불 합계 (취소된 결제 또는 환불된 예약)
@@ -325,4 +334,77 @@ export async function getPaymentsForSettlement(
     paidCount: paidPayments.length,
     refundedCount: refundedPayments.length,
   }
+}
+
+// 정산 일괄 생성
+export interface BulkGenerateResult {
+  created: number
+  skipped: number
+  errors: string[]
+}
+
+export async function bulkGenerateSettlements(targetMonth: string): Promise<BulkGenerateResult> {
+  // targetMonth는 정산이 실행되는 월 (예: "2026-02")
+  // 정산 대상 기간: 전월 1일 ~ 전월 말일
+  const targetDate = dayjs(targetMonth + '-01')
+  const periodStart = targetDate.subtract(1, 'month').startOf('month').format('YYYY-MM-DD')
+  const periodEnd = targetDate.subtract(1, 'month').endOf('month').format('YYYY-MM-DD')
+
+  const result: BulkGenerateResult = { created: 0, skipped: 0, errors: [] }
+
+  // 1. 활성 사업주 전체 조회
+  const { data: vendors, error: vendorError } = await supabase
+    .from('business_owners')
+    .select('id, name, commission_rate')
+    .eq('status', 'active')
+
+  if (vendorError) {
+    throw new Error(`사업주 조회 실패: ${vendorError.message}`)
+  }
+
+  if (!vendors || vendors.length === 0) {
+    throw new Error('활성 사업주가 없습니다')
+  }
+
+  // 2. 해당 월에 이미 생성된 정산 확인
+  const { data: existingSettlements } = await supabase
+    .from('settlements')
+    .select('business_owner_id')
+    .eq('settlement_month', targetMonth)
+
+  const existingVendorIds = new Set(
+    (existingSettlements || []).map(s => s.business_owner_id)
+  )
+
+  // 3. 각 사업주별 정산 생성
+  for (const vendor of vendors) {
+    // 이미 해당 월 정산이 있으면 스킵
+    if (existingVendorIds.has(vendor.id)) {
+      result.skipped++
+      continue
+    }
+
+    try {
+      // 결제 내역 조회
+      const paymentSummary = await getPaymentsForSettlement(vendor.id, periodStart, periodEnd)
+
+      // 정산 생성 (매출 0원이어도 생성)
+      await createSettlement({
+        business_owner_id: vendor.id,
+        settlement_period_start: periodStart,
+        settlement_period_end: periodEnd,
+        settlement_month: targetMonth,
+        total_sales: paymentSummary.totalSales,
+        commission_rate: vendor.commission_rate,
+        refund_amount: paymentSummary.refundAmount,
+      })
+
+      result.created++
+    } catch (err) {
+      const errorMsg = err instanceof Error ? err.message : '알 수 없는 오류'
+      result.errors.push(`${vendor.name}: ${errorMsg}`)
+    }
+  }
+
+  return result
 }

@@ -164,6 +164,55 @@ export const PAYMENT_EXCEL_COLUMNS = [
   { key: 'created_at', header: '결제요청일시' },
 ] as const
 
+// 정산 목록 엑셀 다운로드용 컬럼 정의
+export const SETTLEMENT_LIST_EXCEL_COLUMNS = [
+  { key: 'settlement_month', header: '정산월' },
+  { key: 'business_owner_name', header: '사업주' },
+  { key: 'period', header: '정산기간' },
+  { key: 'total_sales', header: '총매출' },
+  { key: 'commission_rate', header: '수수료율(%)' },
+  { key: 'commission_amount', header: '수수료금액' },
+  { key: 'refund_amount', header: '환불금액' },
+  { key: 'settlement_amount', header: '정산금' },
+  { key: 'status', header: '상태' },
+  { key: 'settled_at', header: '정산일' },
+] as const
+
+// 정산 목록 데이터 엑셀 형식으로 변환
+const SETTLEMENT_STATUS_KR: Record<string, string> = {
+  pending: '정산대기',
+  completed: '정산완료',
+}
+
+export function formatSettlementsForExcel(settlements: SettlementListForExcel[]) {
+  return settlements.map((s) => ({
+    settlement_month: s.settlement_month || '',
+    business_owner_name: s.business_owner?.name || '',
+    period: `${s.settlement_period_start} ~ ${s.settlement_period_end}`,
+    total_sales: s.total_sales,
+    commission_rate: s.commission_rate,
+    commission_amount: s.commission_amount,
+    refund_amount: s.refund_amount,
+    settlement_amount: s.settlement_amount,
+    status: SETTLEMENT_STATUS_KR[s.status] || s.status,
+    settled_at: s.settled_at || '',
+  }))
+}
+
+interface SettlementListForExcel {
+  settlement_month: string | null
+  settlement_period_start: string
+  settlement_period_end: string
+  total_sales: number
+  commission_rate: number
+  commission_amount: number
+  refund_amount: number
+  settlement_amount: number
+  status: string
+  settled_at: string | null
+  business_owner?: { name: string }
+}
+
 // 정산 결제내역 엑셀 다운로드용 컬럼 정의
 export const SETTLEMENT_PAYMENT_EXCEL_COLUMNS = [
   { key: 'reservation_number', header: '예약번호' },
