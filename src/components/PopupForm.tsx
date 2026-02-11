@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Form, Input, Select, Switch, Button, Card, InputNumber, DatePicker, Upload, Typography, Image } from 'antd'
+import { Form, Input, Switch, Button, Card, DatePicker, Upload, Typography, Image } from 'antd'
 import { ArrowLeftOutlined, AppstoreOutlined, SettingOutlined, UploadOutlined } from '@ant-design/icons'
 import dayjs from 'dayjs'
 
@@ -80,9 +80,6 @@ export function PopupForm({
       form={form}
       layout="vertical"
       initialValues={{
-        position: 'center',
-        width: 400,
-        height: 300,
         is_visible: true,
         ...initialValues,
         period: periodValue,
@@ -156,36 +153,6 @@ export function PopupForm({
           description="팝업의 노출 설정을 관리합니다"
         />
 
-        <div style={{ display: 'flex', gap: 24, flexWrap: 'wrap' }}>
-          <Form.Item
-            name="position"
-            label="위치"
-            rules={[{ required: true, message: '위치를 선택해주세요' }]}
-          >
-            <Select
-              style={{ width: 120 }}
-              options={[
-                { value: 'center', label: '중앙' },
-                { value: 'bottom', label: '하단' },
-              ]}
-            />
-          </Form.Item>
-
-          <Form.Item
-            name="width"
-            label="너비 (px)"
-          >
-            <InputNumber min={200} max={800} style={{ width: 100 }} />
-          </Form.Item>
-
-          <Form.Item
-            name="height"
-            label="높이 (px)"
-          >
-            <InputNumber min={100} max={600} style={{ width: 100 }} />
-          </Form.Item>
-        </div>
-
         <Form.Item
           name="period"
           label="노출 기간"
@@ -195,6 +162,7 @@ export function PopupForm({
             showTime
             format="YYYY-MM-DD HH:mm"
             placeholder={['시작일', '종료일']}
+            popupClassName="single-calendar-range"
           />
         </Form.Item>
 

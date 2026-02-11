@@ -177,6 +177,7 @@ export function AdBannerForm({
               showTime
               format="YYYY-MM-DD HH:mm"
               placeholder={['시작일', '종료일']}
+              popupClassName="single-calendar-range"
             />
           </Form.Item>
 

@@ -465,6 +465,9 @@ export interface Reservation {
   participant_count: number
   total_amount: number
   status: ReservationStatusType
+  reserver_name: string | null
+  reserver_phone: string | null
+  reserver_email: string | null
   memo: string | null
   cancel_reason: string | null
   cancelled_at: string | null

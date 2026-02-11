@@ -168,6 +168,7 @@ export function SettlementsPage() {
           }}
           style={{ width: 240 }}
           placeholder={['시작일', '종료일']}
+          popupClassName="single-calendar-range"
         />
         <Button type="primary" onClick={handleVendorSearch}>
           검색

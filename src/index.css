@@ -43,3 +43,15 @@ body {
 .ant-menu-item-selected {
   font-weight: 600;
 }
+
+/* Quill 에디터 툴바 상단 고정 */
+.ql-toolbar.ql-snow {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: #fff;
+}
+
+/* RangePicker 단일 캘린더 (한달만 표시) */
+.single-calendar-range .ant-picker-panels > *:last-child { display: none; }
+.single-calendar-range .ant-picker-footer-extra { display: none; }

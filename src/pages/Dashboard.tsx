@@ -208,6 +208,7 @@ export function DashboardPage() {
             onChange={handleDateRangeChange}
             allowClear={false}
             style={{ width: 220 }}
+            popupClassName="single-calendar-range"
           />
         </Space>
         <Text type="secondary" style={{ fontSize: 12, marginLeft: 'auto' }}>

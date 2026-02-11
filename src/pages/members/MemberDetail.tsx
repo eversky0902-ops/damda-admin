@@ -201,12 +201,12 @@ export function MemberDetailPage() {
               {daycare.business_number || '-'}
             </Descriptions.Item>
             <Descriptions.Item label="대표자">{daycare.representative || '-'}</Descriptions.Item>
+            <Descriptions.Item label="대표 전화번호">
+              {formatPhoneNumber(daycare.tel)}
+            </Descriptions.Item>
             <Descriptions.Item label="담당자">{daycare.contact_name}</Descriptions.Item>
             <Descriptions.Item label="담당자 연락처">
               {formatPhoneNumber(daycare.contact_phone)}
-            </Descriptions.Item>
-            <Descriptions.Item label="전화번호">
-              {formatPhoneNumber(daycare.tel)}
             </Descriptions.Item>
             <Descriptions.Item label="인가번호">{daycare.license_number || '-'}</Descriptions.Item>
             <Descriptions.Item label="정원">

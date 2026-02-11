@@ -380,14 +380,14 @@ export function ReservationDetailPage() {
             </Descriptions>
           </Card>
 
-          {/* 예약자 정보 */}
-          <Card title="예약자 정보 (어린이집)" size="small" style={{ marginBottom: 16 }}>
+          {/* 예약자 정보 (결제시 입력) */}
+          <Card title="예약자 정보" size="small" style={{ marginBottom: 16 }}>
             <Descriptions column={2} bordered size="small">
+              <Descriptions.Item label="예약자명">{reservation.reserver_name || reservation.daycare?.contact_name || '-'}</Descriptions.Item>
+              <Descriptions.Item label="연락처">{reservation.reserver_phone || reservation.daycare?.contact_phone || '-'}</Descriptions.Item>
+              <Descriptions.Item label="이메일" span={2}>{reservation.reserver_email || reservation.daycare?.email || '-'}</Descriptions.Item>
               <Descriptions.Item label="어린이집명">{reservation.daycare?.name || '-'}</Descriptions.Item>
-              <Descriptions.Item label="담당자">{reservation.daycare?.contact_name || '-'}</Descriptions.Item>
-              <Descriptions.Item label="연락처">{reservation.daycare?.contact_phone || '-'}</Descriptions.Item>
-              <Descriptions.Item label="이메일">{reservation.daycare?.email || '-'}</Descriptions.Item>
-              <Descriptions.Item label="주소" span={2}>
+              <Descriptions.Item label="주소">
                 {reservation.daycare?.address || '-'}
                 {reservation.daycare?.address_detail && ` ${reservation.daycare.address_detail}`}
               </Descriptions.Item>

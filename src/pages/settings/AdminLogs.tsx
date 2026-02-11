@@ -170,6 +170,7 @@ export function AdminLogsPage() {
           value={dateRange}
           onChange={(dates) => setDateRange(dates as [dayjs.Dayjs, dayjs.Dayjs] | null)}
           style={{ width: 240 }}
+          popupClassName="single-calendar-range"
         />
         <Button type="primary" icon={<SearchOutlined />} onClick={handleSearch}>
           검색

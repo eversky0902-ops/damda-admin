@@ -5,7 +5,7 @@ import { ArrowLeftOutlined, EditOutlined, DeleteOutlined, LinkOutlined } from '@
 import dayjs from 'dayjs'
 
 import { getPopup, deletePopup, togglePopupVisibility } from '@/services/popupService'
-import { POPUP_POSITION_LABEL, DATETIME_FORMAT } from '@/constants'
+import { DATETIME_FORMAT } from '@/constants'
 
 // 팝업 활성 상태 계산
 function getPopupStatus(popup: { is_visible: boolean; start_date: string; end_date: string }): 'active' | 'scheduled' | 'expired' | 'hidden' {
@@ -111,8 +111,6 @@ export function PopupDetailPage() {
       )}
 
       <Descriptions column={2} bordered size="small" style={{ marginBottom: 24 }}>
-        <Descriptions.Item label="위치">{POPUP_POSITION_LABEL[popup.position]}</Descriptions.Item>
-        <Descriptions.Item label="크기">{popup.width || 400} x {popup.height || 300}</Descriptions.Item>
         <Descriptions.Item label="게시 시작일">{dayjs(popup.start_date).format(DATETIME_FORMAT)}</Descriptions.Item>
         <Descriptions.Item label="게시 종료일">{dayjs(popup.end_date).format(DATETIME_FORMAT)}</Descriptions.Item>
         <Descriptions.Item label="링크 URL" span={2}>

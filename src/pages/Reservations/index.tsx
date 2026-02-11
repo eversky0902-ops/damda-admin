@@ -334,6 +334,7 @@ export function ReservationsPage() {
             }}
             style={{ width: 240 }}
             placeholder={['시작일', '종료일']}
+            popupClassName="single-calendar-range"
           />
         </Space>
       </div>

@@ -7,8 +7,8 @@ import type { ColumnsType, TablePaginationConfig } from 'antd/es/table'
 import dayjs from 'dayjs'
 
 import { getPopups, togglePopupVisibility, deletePopup } from '@/services/popupService'
-import { POPUP_POSITION_LABEL, DEFAULT_PAGE_SIZE, DATE_FORMAT } from '@/constants'
-import type { Popup, PopupPosition } from '@/types'
+import { DEFAULT_PAGE_SIZE, DATE_FORMAT } from '@/constants'
+import type { Popup } from '@/types'
 
 function getPopupStatus(popup: Popup): { label: string; color: string } {
   const now = dayjs()
@@ -33,16 +33,13 @@ export function PopupsPage() {
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE)
   const [statusFilter, setStatusFilter] = useState<'all' | 'visible' | 'hidden' | 'active' | 'scheduled' | 'expired'>('all')
-  const [positionFilter, setPositionFilter] = useState<PopupPosition | 'all'>('all')
-
   const { data, isLoading } = useQuery({
-    queryKey: ['popups', page, pageSize, statusFilter, positionFilter],
+    queryKey: ['popups', page, pageSize, statusFilter],
     queryFn: () =>
       getPopups({
         page,
         pageSize,
         status: statusFilter,
-        position: positionFilter,
       }),
   })
 
@@ -84,21 +81,6 @@ export function PopupsPage() {
           {title}
         </a>
       ),
-    },
-    {
-      title: '위치',
-      dataIndex: 'position',
-      key: 'position',
-      width: 80,
-      render: (position: PopupPosition) => (
-        <Tag>{POPUP_POSITION_LABEL[position]}</Tag>
-      ),
-    },
-    {
-      title: '크기',
-      key: 'size',
-      width: 100,
-      render: (_, record) => `${record.width || 400}x${record.height || 300}`,
     },
     {
       title: '노출기간',
@@ -182,19 +164,6 @@ export function PopupsPage() {
         background: '#fafafa',
         borderRadius: 6,
       }}>
-        <Select
-          value={positionFilter}
-          onChange={(value) => {
-            setPositionFilter(value)
-            setPage(1)
-          }}
-          style={{ width: 120 }}
-          options={[
-            { value: 'all', label: '전체 위치' },
-            { value: 'center', label: '중앙' },
-            { value: 'bottom', label: '하단' },
-          ]}
-        />
         <Select
           value={statusFilter}
           onChange={(value) => {

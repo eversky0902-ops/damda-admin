@@ -308,6 +308,7 @@ export function PaymentsPage() {
           }}
           style={{ width: 240 }}
           placeholder={['시작일', '종료일']}
+          popupClassName="single-calendar-range"
         />
       </div>
 

@@ -1,4 +1,4 @@
-import { useState, useMemo, useRef, useCallback } from 'react'
+import { useState, useMemo, useRef, useCallback, useEffect } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import {
   Form,
@@ -276,7 +276,7 @@ export function ProductForm({
     }
   }
 
-  // 추가 이미지 업로드
+  // 추가 이미지 업로드 (다중)
   const handleImageUpload: UploadProps['customRequest'] = async ({ file, onSuccess, onError }) => {
     setImageUploading(true)
     try {
@@ -520,13 +520,19 @@ export function ProductForm({
     return categories ? convertToCascaderOptions(categories) : []
   }, [categories])
 
-  // 초기 카테고리 경로 (수정 모드용)
+  // 초기 카테고리 경로 (수정 모드용) - categories 로드 후 form에 반영
   const initialCategoryPath = useMemo(() => {
     if (initialValues?.category_id && categories) {
       return findCategoryPath(categories, initialValues.category_id) || []
     }
     return []
   }, [initialValues?.category_id, categories])
+
+  useEffect(() => {
+    if (initialCategoryPath.length > 0) {
+      form.setFieldsValue({ category_path: initialCategoryPath })
+    }
+  }, [initialCategoryPath, form])
 
   return (
     <>
@@ -801,6 +807,7 @@ export function ProductForm({
                   showUploadList={false}
                   customRequest={handleImageUpload}
                   accept="image/*"
+                  multiple
                 >
                   <div>
                     {imageUploading ? '업로드중...' : <PlusOutlined />}
