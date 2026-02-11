@@ -64,7 +64,7 @@ export async function getReservations(
   }
 
   return {
-    data: (data as Reservation[]) || [],
+    data: (data as unknown as Reservation[]) || [],
     total: count || 0,
   }
 }
@@ -85,7 +85,7 @@ export async function getAllReservations(): Promise<Reservation[]> {
     throw new Error(error.message)
   }
 
-  return (data as Reservation[]) || []
+  return (data as unknown as Reservation[]) || []
 }
 
 // 예약 상세 조회
