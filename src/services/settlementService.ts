@@ -37,6 +37,9 @@ export interface SettlementWithVendor extends Settlement {
     id: string
     name: string
     email: string
+    bank_name?: string
+    bank_account?: string
+    bank_holder?: string
   }
 }
 
@@ -50,7 +53,7 @@ export async function getSettlements(
     .from('settlements')
     .select(`
       *,
-      business_owner:business_owners!settlements_business_owner_id_fkey(id, name, email)
+      business_owner:business_owners!settlements_business_owner_id_fkey(id, name, email, bank_name, bank_account, bank_holder)
     `, { count: 'exact' })
 
   // 상태 필터

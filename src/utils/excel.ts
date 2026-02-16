@@ -168,6 +168,9 @@ export const PAYMENT_EXCEL_COLUMNS = [
 export const SETTLEMENT_LIST_EXCEL_COLUMNS = [
   { key: 'settlement_month', header: '정산월' },
   { key: 'business_owner_name', header: '사업주' },
+  { key: 'bank_name', header: '은행명' },
+  { key: 'bank_account', header: '계좌번호' },
+  { key: 'bank_holder', header: '예금주' },
   { key: 'period', header: '정산기간' },
   { key: 'total_sales', header: '총매출' },
   { key: 'commission_rate', header: '수수료율(%)' },
@@ -188,6 +191,9 @@ export function formatSettlementsForExcel(settlements: SettlementListForExcel[])
   return settlements.map((s) => ({
     settlement_month: s.settlement_month || '',
     business_owner_name: s.business_owner?.name || '',
+    bank_name: s.business_owner?.bank_name || '',
+    bank_account: s.business_owner?.bank_account || '',
+    bank_holder: s.business_owner?.bank_holder || '',
     period: `${s.settlement_period_start} ~ ${s.settlement_period_end}`,
     total_sales: s.total_sales,
     commission_rate: s.commission_rate,
@@ -210,7 +216,7 @@ interface SettlementListForExcel {
   settlement_amount: number
   status: string
   settled_at: string | null
-  business_owner?: { name: string }
+  business_owner?: { name: string; bank_name?: string; bank_account?: string; bank_holder?: string }
 }
 
 // 정산 결제내역 엑셀 다운로드용 컬럼 정의
