@@ -21,7 +21,7 @@ import {
 } from 'antd'
 import {
   ArrowLeftOutlined,
-  DollarOutlined,
+  // DollarOutlined,
   ExclamationCircleOutlined,
   LinkOutlined,
 } from '@ant-design/icons'
@@ -195,7 +195,8 @@ export function PaymentDetailPage() {
   }
 
   const reservation = payment.reservation
-  const canRefund = payment.status === 'paid' && reservation && !['cancelled', 'refunded'].includes(reservation.status)
+  // 환불은 예약내역 상세에서만 처리
+  // const canRefund = payment.status === 'paid' && reservation && !['cancelled', 'refunded'].includes(reservation.status)
   const totalRefunded = payment.refunds?.reduce((sum, r) => sum + r.refund_amount, 0) || 0
   const remainingAmount = payment.amount - totalRefunded
 
@@ -207,7 +208,8 @@ export function PaymentDetailPage() {
         <>
           {/* 액션 버튼 */}
           <div style={{ marginBottom: 12, display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-            {canRefund && remainingAmount > 0 && (
+            {/* 환불은 예약내역 상세에서만 처리 */}
+            {/* {canRefund && remainingAmount > 0 && (
               <Button
                 icon={<DollarOutlined />}
                 onClick={() => {
@@ -217,7 +219,7 @@ export function PaymentDetailPage() {
               >
                 환불 처리
               </Button>
-            )}
+            )} */}
             {payment.receipt_url && (
               <Button
                 icon={<LinkOutlined />}
