@@ -257,6 +257,13 @@ export function ReservationDetailPage() {
       key: 'admin',
       render: (_, record) => record.admin?.name || '-',
     },
+    {
+      title: '관리자 메모',
+      dataIndex: 'admin_memo',
+      key: 'admin_memo',
+      ellipsis: true,
+      render: (memo: string | null) => memo || '-',
+    },
   ]
 
   if (isLoading) {
@@ -275,6 +282,8 @@ export function ReservationDetailPage() {
   const canComplete = reservation.status === 'confirmed'
   const canCancel = ['pending', 'paid', 'confirmed'].includes(reservation.status)
   const canRefund = payment && payment.status === 'paid' && !['cancelled', 'refunded'].includes(reservation.status)
+  const totalRefunded = refunds?.reduce((sum, r) => sum + r.refund_amount, 0) || 0
+  const remainingAmount = payment ? payment.amount - totalRefunded : 0
 
   const tabItems = [
     {
@@ -314,11 +323,11 @@ export function ReservationDetailPage() {
                 예약 취소
               </Button>
             )}
-            {canRefund && (
+            {canRefund && remainingAmount > 0 && (
               <Button
                 icon={<DollarOutlined />}
                 onClick={() => {
-                  refundForm.setFieldsValue({ refund_amount: payment.amount })
+                  refundForm.setFieldsValue({ refund_amount: remainingAmount })
                   setIsRefundModalOpen(true)
                 }}
               >
@@ -604,7 +613,12 @@ export function ReservationDetailPage() {
 
       {/* 환불 모달 */}
       <Modal
-        title="환불 처리"
+        title={
+          <Space>
+            <ExclamationCircleOutlined style={{ color: '#faad14' }} />
+            환불 처리
+          </Space>
+        }
         open={isRefundModalOpen}
         onOk={handleRefundSubmit}
         onCancel={() => {
@@ -619,6 +633,14 @@ export function ReservationDetailPage() {
           <Form.Item label="결제 금액">
             <Text strong>{payment?.amount.toLocaleString()}원</Text>
           </Form.Item>
+          {totalRefunded > 0 && (
+            <Form.Item label="기 환불 금액">
+              <Text type="danger">-{totalRefunded.toLocaleString()}원</Text>
+            </Form.Item>
+          )}
+          <Form.Item label="환불 가능 금액">
+            <Text strong style={{ color: '#1677ff' }}>{remainingAmount.toLocaleString()}원</Text>
+          </Form.Item>
           <Form.Item
             name="refund_amount"
             label="환불 금액"
@@ -627,8 +649,8 @@ export function ReservationDetailPage() {
               {
                 type: 'number',
                 min: 1,
-                max: payment?.amount || 0,
-                message: `1 ~ ${payment?.amount.toLocaleString()}원 사이여야 합니다`,
+                max: remainingAmount,
+                message: `1 ~ ${remainingAmount.toLocaleString()}원 사이여야 합니다`,
               },
             ]}
           >
@@ -644,10 +666,10 @@ export function ReservationDetailPage() {
             label="환불 사유"
             rules={[{ required: true, message: '환불 사유를 입력하세요' }]}
           >
-            <TextArea rows={2} placeholder="환불 사유를 입력하세요" />
+            <TextArea rows={2} placeholder="고객에게 안내될 환불 사유를 입력하세요" />
           </Form.Item>
           <Form.Item name="admin_memo" label="관리자 메모">
-            <TextArea rows={2} placeholder="내부 참고용 메모" />
+            <TextArea rows={2} placeholder="내부 참고용 메모 (고객에게 노출되지 않음)" />
           </Form.Item>
         </Form>
       </Modal>

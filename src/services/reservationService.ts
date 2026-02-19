@@ -224,7 +224,7 @@ export async function getRefunds(reservationId: string): Promise<Refund[]> {
   return (data as Refund[]) || []
 }
 
-// 환불 처리
+// 환불 처리 (나이스페이 PG 환불 API 호출 포함)
 export async function processRefund(
   reservationId: string,
   paymentId: string,
@@ -233,45 +233,30 @@ export async function processRefund(
   adminMemo: string,
   adminId: string
 ): Promise<Refund> {
-  // 결제 정보 조회
-  const { data: payment, error: paymentError } = await supabase
-    .from('payments')
-    .select('amount')
-    .eq('id', paymentId)
-    .single()
-
-  if (paymentError) {
-    throw new Error(paymentError.message)
-  }
-
-  // 환불 내역 추가
-  const { data: refund, error: refundError } = await supabase
-    .from('refunds')
-    .insert({
-      payment_id: paymentId,
-      reservation_id: reservationId,
-      original_amount: payment.amount,
-      refund_amount: refundAmount,
+  // Edge Function 호출하여 PG 환불 처리
+  const { data, error } = await supabase.functions.invoke('process-refund', {
+    body: {
+      paymentId,
+      reservationId,
+      refundAmount,
       reason,
-      admin_memo: adminMemo,
-      status: 'completed',
-      refunded_at: new Date().toISOString(),
-      processed_by: adminId,
-    })
-    .select()
-    .single()
+      adminMemo,
+      adminId,
+    },
+  })
 
-  if (refundError) {
-    throw new Error(refundError.message)
+  if (error) {
+    throw new Error(error.message || '환불 처리 중 오류가 발생했습니다.')
   }
 
-  // 활동 로그 기록 (환불)
-  await logCreate('refund', refund.id, refund as Record<string, unknown>)
+  if (!data.success) {
+    throw new Error(data.error || '환불 처리에 실패했습니다.')
+  }
 
-  // 예약 상태 변경 (이 함수 내부에서 로그가 기록됨)
-  await updateReservationStatus(reservationId, 'refunded', reason)
+  // 활동 로그 기록
+  await logCreate('refund', data.refund.id, data.refund as Record<string, unknown>)
 
-  return refund as Refund
+  return data.refund as Refund
 }
 
 // 예약 통계 조회
