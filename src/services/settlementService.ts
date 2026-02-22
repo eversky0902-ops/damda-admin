@@ -82,6 +82,8 @@ export async function getSettlements(
   // 정산월 필터
   if (settlement_month) {
     query = query.eq('settlement_month', settlement_month)
+    // 월별 조회 시 매출 0원 사업주 제외
+    query = query.gt('total_sales', 0)
   }
 
   // 정렬
@@ -391,7 +393,6 @@ export async function bulkGenerateSettlements(targetMonth: string): Promise<Bulk
       // 결제 내역 조회
       const paymentSummary = await getPaymentsForSettlement(vendor.id, periodStart, periodEnd)
 
-      // 정산 생성 (매출 0원이어도 생성)
       await createSettlement({
         business_owner_id: vendor.id,
         settlement_period_start: periodStart,
