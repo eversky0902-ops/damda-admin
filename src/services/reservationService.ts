@@ -246,6 +246,15 @@ export async function processRefund(
   })
 
   if (error) {
+    // Edge Function non-2xx 응답 시 body에서 실제 에러 메시지 추출
+    try {
+      const errorBody = await error.context?.json?.()
+      if (errorBody?.error) {
+        throw new Error(errorBody.error)
+      }
+    } catch (e) {
+      if (e instanceof Error && e.message !== error.message) throw e
+    }
     throw new Error(error.message || '환불 처리 중 오류가 발생했습니다.')
   }
 
