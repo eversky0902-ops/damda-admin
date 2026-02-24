@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase'
+import { getSetting } from '@/services/settingsService'
 import type { Reservation } from '@/types'
 
 // 대시보드 통계 타입
@@ -45,6 +46,12 @@ export interface DailyRevenueDetailData {
   netRevenue: number       // 순매출 (매출 - 환불)
   settlementAmount: number // 정산액 (매출 - 플랫폼수수료)
   count: number            // 결제 건수
+}
+
+// 일별 매출 세분화 결과 (수수료율 포함)
+export interface DailyRevenueDetailResult {
+  data: DailyRevenueDetailData[]
+  commissionRate: number   // 적용된 플랫폼 수수료율 (%)
 }
 
 // 요일별 예약 데이터
@@ -257,8 +264,8 @@ export async function getDailyRevenue(days = 14): Promise<DailyRevenueData[]> {
 export async function getDailyRevenueDetail(
   startDate: string,
   endDate: string
-): Promise<DailyRevenueDetailData[]> {
-  const [paymentsData, refundsData] = await Promise.all([
+): Promise<DailyRevenueDetailResult> {
+  const [paymentsData, refundsData, commissionSetting] = await Promise.all([
     // 결제 완료 데이터
     supabase
       .from('payments')
@@ -276,6 +283,9 @@ export async function getDailyRevenueDetail(
       .gte('refunded_at', `${startDate}T00:00:00`)
       .lte('refunded_at', `${endDate}T23:59:59`)
       .order('refunded_at', { ascending: true }),
+
+    // 플랫폼 수수료율 설정
+    getSetting('default_commission_rate'),
   ])
 
   if (paymentsData.error) throw new Error(paymentsData.error.message)
@@ -326,19 +336,24 @@ export async function getDailyRevenueDetail(
     }
   })
 
-  // 결과 변환
-  const PLATFORM_COMMISSION_RATE = 0.1 // 플랫폼 수수료 10% (기본값)
+  // 결과 변환 - DB에서 수수료율 조회 (fallback 10%)
+  const commissionRatePercent = commissionSetting?.value
+    ? Number(typeof commissionSetting.value === 'string' ? JSON.parse(commissionSetting.value) : commissionSetting.value)
+    : 10
+  const platformCommissionRate = commissionRatePercent / 100
 
-  return Array.from(dailyMap.entries()).map(([date, data]) => ({
+  const data = Array.from(dailyMap.entries()).map(([date, d]) => ({
     date,
     displayDate: `${parseInt(date.split('-')[1])}/${parseInt(date.split('-')[2])}`,
-    revenue: data.revenue,
-    refundAmount: data.refundAmount,
-    cancelFee: data.cancelFee,
-    netRevenue: data.revenue - data.refundAmount,
-    settlementAmount: Math.round(data.revenue * (1 - PLATFORM_COMMISSION_RATE)),
-    count: data.count,
+    revenue: d.revenue,
+    refundAmount: d.refundAmount,
+    cancelFee: d.cancelFee,
+    netRevenue: d.revenue - d.refundAmount,
+    settlementAmount: Math.round(d.revenue * (1 - platformCommissionRate)),
+    count: d.count,
   }))
+
+  return { data, commissionRate: commissionRatePercent }
 }
 
 // 요일별 예약 분포

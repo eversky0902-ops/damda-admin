@@ -96,10 +96,12 @@ export function DashboardPage() {
   })
 
   // 일별 매출 추이 (세분화)
-  const { data: dailyRevenueDetail, isLoading: revenueLoading } = useQuery({
+  const { data: revenueResult, isLoading: revenueLoading } = useQuery({
     queryKey: ['dailyRevenueDetail', startDateStr, endDateStr],
     queryFn: () => getDailyRevenueDetail(startDateStr, endDateStr),
   })
+  const dailyRevenueDetail = revenueResult?.data
+  const commissionRate = revenueResult?.commissionRate ?? 10
 
   // 요일별 예약 분포
   const { data: weekdayData } = useQuery({
@@ -292,7 +294,7 @@ export function DashboardPage() {
               formatter={(value) => Number(value).toLocaleString()}
             />
             <div style={{ marginTop: 8, fontSize: 12, color: '#999' }}>
-              플랫폼 수수료 10% 제외
+              플랫폼 수수료 {commissionRate}% 제외
             </div>
           </Card>
         </Col>
