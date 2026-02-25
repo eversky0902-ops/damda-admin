@@ -7,7 +7,6 @@ import {
   SearchOutlined,
   DownloadOutlined,
   UploadOutlined,
-  FileExcelOutlined,
 } from '@ant-design/icons'
 import type { ColumnsType, TablePaginationConfig } from 'antd/es/table'
 import type { MenuProps } from 'antd'
@@ -33,7 +32,6 @@ import {
   PRODUCT_EXCEL_COLUMNS,
   parseExcelFile,
   parseProductExcelData,
-  downloadProductTemplate,
 } from '@/utils/excel'
 
 type ProductStatusFilter = ProductFilter['status']
@@ -179,13 +177,6 @@ export function ProductsPage() {
       label: '전체 목록 다운로드',
       icon: <DownloadOutlined />,
       onClick: handleDownloadAll,
-    },
-    { type: 'divider' },
-    {
-      key: 'template',
-      label: '업로드 양식 다운로드',
-      icon: <FileExcelOutlined />,
-      onClick: downloadProductTemplate,
     },
   ]
 
@@ -432,9 +423,6 @@ export function ProductsPage() {
         open={isUploadModalOpen}
         onCancel={() => setIsUploadModalOpen(false)}
         footer={[
-          <Button key="template" icon={<FileExcelOutlined />} onClick={downloadProductTemplate}>
-            양식 다운로드
-          </Button>,
           <Button key="close" onClick={() => setIsUploadModalOpen(false)}>
             닫기
           </Button>,
@@ -446,11 +434,9 @@ export function ProductsPage() {
             message="업로드 안내"
             description={
               <ul style={{ margin: 0, paddingLeft: 20 }}>
-                <li>양식 다운로드 버튼을 클릭하여 엑셀 양식을 먼저 다운로드하세요.</li>
-                <li>* 표시가 있는 필드는 필수 항목입니다.</li>
+                <li>"전체 목록 다운로드" 엑셀을 그대로 수정하여 업로드하세요.</li>
                 <li><strong>ID가 비어있으면</strong> 신규 상품으로 등록됩니다.</li>
                 <li><strong>ID가 있으면</strong> 해당 상품 정보가 수정됩니다.</li>
-                <li>기존 데이터 수정 시 "전체 목록 다운로드"로 ID를 확인하세요.</li>
                 <li>
                   <strong>옵션:</strong> 이름:가격:필수여부 형식, | 로 구분
                   <br />

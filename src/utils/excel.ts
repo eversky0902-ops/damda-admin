@@ -502,16 +502,27 @@ export async function parseExcelFile<T>(file: File): Promise<T[]> {
 }
 
 // 엑셀 데이터를 사업주 생성 입력으로 변환
+// 다운로드 엑셀을 그대로 업로드해도 동작하도록 다운로드 전용 헤더도 인식
 export function parseVendorExcelData(
   data: Record<string, unknown>[]
 ): { valid: Record<string, unknown>[]; errors: { row: number; message: string }[] } {
   const valid: Record<string, unknown>[] = []
   const errors: { row: number; message: string }[] = []
 
+  // 업로드 컬럼 + 다운로드 전용 컬럼 헤더 매핑
   const headerKeyMap: Record<string, string> = {}
   VENDOR_UPLOAD_COLUMNS.forEach((col) => {
     headerKeyMap[col.header] = col.key
   })
+  // 다운로드 엑셀에만 있는 헤더도 매핑 (무시 대상)
+  VENDOR_EXCEL_COLUMNS.forEach((col) => {
+    if (!headerKeyMap[col.header]) {
+      headerKeyMap[col.header] = col.key
+    }
+  })
+
+  // 업로드 시 유효한 키 목록 (이 키만 서비스로 전달)
+  const validKeys = new Set<string>(VENDOR_UPLOAD_COLUMNS.map((col) => col.key))
 
   data.forEach((row, index) => {
     const rowNum = index + 2 // 헤더가 1행이므로 데이터는 2행부터
@@ -520,7 +531,10 @@ export function parseVendorExcelData(
     const converted: Record<string, unknown> = {}
     Object.entries(row).forEach(([key, value]) => {
       const mappedKey = headerKeyMap[key] || key
-      converted[mappedKey] = value
+      // 업로드에 유효한 키만 포함 (상태, 가입일 등 무시)
+      if (validKeys.has(mappedKey)) {
+        converted[mappedKey] = value
+      }
     })
 
     // 필수 필드 검증
@@ -659,16 +673,29 @@ function parseTimeSlotsString(
 }
 
 // 엑셀 데이터를 상품 생성 입력으로 변환
+// 다운로드 엑셀을 그대로 업로드해도 동작하도록 다운로드 전용 헤더도 인식
 export function parseProductExcelData(
   data: Record<string, unknown>[]
 ): { valid: Record<string, unknown>[]; errors: { row: number; message: string }[] } {
   const valid: Record<string, unknown>[] = []
   const errors: { row: number; message: string }[] = []
 
+  // 업로드 컬럼 + 다운로드 전용 컬럼 헤더 매핑
   const headerKeyMap: Record<string, string> = {}
   PRODUCT_UPLOAD_COLUMNS.forEach((col) => {
     headerKeyMap[col.header] = col.key
   })
+  // 다운로드 엑셀에만 있는 헤더도 매핑 (무시 대상)
+  PRODUCT_EXCEL_COLUMNS.forEach((col) => {
+    if (!headerKeyMap[col.header]) {
+      headerKeyMap[col.header] = col.key
+    }
+  })
+  // 다운로드 헤더 '노출여부' → 업로드 키 'is_visible' 매핑 (업로드 헤더는 '노출여부(Y/N)')
+  headerKeyMap['노출여부'] = 'is_visible'
+
+  // 업로드 시 유효한 키 목록 (이 키만 서비스로 전달)
+  const validKeys = new Set<string>(PRODUCT_UPLOAD_COLUMNS.map((col) => col.key))
 
   data.forEach((row, index) => {
     const rowNum = index + 2
@@ -677,7 +704,10 @@ export function parseProductExcelData(
     const converted: Record<string, unknown> = {}
     Object.entries(row).forEach(([key, value]) => {
       const mappedKey = headerKeyMap[key] || key
-      converted[mappedKey] = value
+      // 업로드에 유효한 키만 포함 (사업주명, 카테고리명, 품절여부, 조회수, 등록일 등 무시)
+      if (validKeys.has(mappedKey)) {
+        converted[mappedKey] = value
+      }
     })
 
     // 필수 필드 검증

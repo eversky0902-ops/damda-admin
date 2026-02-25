@@ -8,7 +8,6 @@ import {
   ShopOutlined,
   DownloadOutlined,
   UploadOutlined,
-  FileExcelOutlined,
 } from '@ant-design/icons'
 import type { ColumnsType, TablePaginationConfig } from 'antd/es/table'
 import type { MenuProps } from 'antd'
@@ -24,7 +23,6 @@ import {
   VENDOR_EXCEL_COLUMNS,
   parseExcelFile,
   parseVendorExcelData,
-  downloadVendorTemplate,
 } from '@/utils/excel'
 
 export function VendorsPage() {
@@ -145,13 +143,6 @@ export function VendorsPage() {
       label: '전체 목록 다운로드',
       icon: <DownloadOutlined />,
       onClick: handleDownloadAll,
-    },
-    { type: 'divider' },
-    {
-      key: 'template',
-      label: '업로드 양식 다운로드',
-      icon: <FileExcelOutlined />,
-      onClick: downloadVendorTemplate,
     },
   ]
 
@@ -320,9 +311,6 @@ export function VendorsPage() {
         open={isUploadModalOpen}
         onCancel={() => setIsUploadModalOpen(false)}
         footer={[
-          <Button key="template" icon={<FileExcelOutlined />} onClick={downloadVendorTemplate}>
-            양식 다운로드
-          </Button>,
           <Button key="close" onClick={() => setIsUploadModalOpen(false)}>
             닫기
           </Button>,
@@ -334,11 +322,9 @@ export function VendorsPage() {
             message="업로드 안내"
             description={
               <ul style={{ margin: 0, paddingLeft: 20 }}>
-                <li>양식 다운로드 버튼을 클릭하여 엑셀 양식을 먼저 다운로드하세요.</li>
-                <li>* 표시가 있는 필드는 필수 항목입니다.</li>
+                <li>"전체 목록 다운로드" 엑셀을 그대로 수정하여 업로드하세요.</li>
                 <li><strong>ID가 비어있으면</strong> 신규 사업주로 등록됩니다.</li>
                 <li><strong>ID가 있으면</strong> 해당 사업주 정보가 수정됩니다.</li>
-                <li>기존 데이터 수정 시 "전체 목록 다운로드"로 ID를 확인하세요.</li>
                 <li>사업자번호는 10자리 숫자만 입력 (하이픈 제외).</li>
               </ul>
             }
