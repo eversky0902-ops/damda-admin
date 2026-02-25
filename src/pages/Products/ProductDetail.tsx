@@ -233,6 +233,7 @@ export function ProductDetailPage() {
             <Descriptions.Item label="지역">{product.region || '-'}</Descriptions.Item>
             <Descriptions.Item label="주소" span={2}>
               {product.address || '-'}
+              {product.address_detail && ` ${product.address_detail}`}
             </Descriptions.Item>
             <Descriptions.Item label="조회수">{product.view_count.toLocaleString()}</Descriptions.Item>
             <Descriptions.Item label="등록일">
