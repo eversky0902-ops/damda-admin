@@ -169,7 +169,6 @@ export async function updateSettlement(id: string, input: SettlementUpdateInput)
     const current = await getSettlement(id)
     const total_sales = input.total_sales ?? current.total_sales
     const commission_rate = input.commission_rate ?? current.commission_rate
-    const refund_amount = input.refund_amount ?? current.refund_amount
 
     updateData.commission_amount = Math.round(total_sales * (commission_rate / 100))
     updateData.settlement_amount = total_sales - (updateData.commission_amount as number)
