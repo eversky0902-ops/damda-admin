@@ -20,13 +20,14 @@ import {
   List,
   Typography,
 } from 'antd'
-import { ArrowLeftOutlined, EditOutlined, ShopOutlined, FileOutlined, FilePdfOutlined, FileImageOutlined } from '@ant-design/icons'
+import { ArrowLeftOutlined, EditOutlined, ShopOutlined, FileOutlined, FilePdfOutlined, FileImageOutlined, LockOutlined } from '@ant-design/icons'
 import type { ColumnsType } from 'antd/es/table'
 import dayjs from 'dayjs'
 
 import {
   getVendor,
   updateVendorStatus,
+  updateVendorPassword,
   getSettlements,
   getCommissionHistories,
   updateCommissionRate,
@@ -44,9 +45,11 @@ export function VendorDetailPage() {
   const { admin } = useAuthStore()
 
   const [isCommissionModalOpen, setIsCommissionModalOpen] = useState(false)
+  const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false)
   const [settlementPage, setSettlementPage] = useState(1)
 
   const [commissionForm] = Form.useForm()
+  const [passwordForm] = Form.useForm()
 
   // 사업주 정보 조회
   const { data: vendor, isLoading } = useQuery({
@@ -103,6 +106,28 @@ export function VendorDetailPage() {
       message.error(error.message)
     },
   })
+
+  // 비밀번호 변경
+  const passwordMutation = useMutation({
+    mutationFn: (password: string) => updateVendorPassword(id!, password),
+    onSuccess: () => {
+      setIsPasswordModalOpen(false)
+      passwordForm.resetFields()
+      message.success('비밀번호가 변경되었습니다')
+    },
+    onError: (error: Error) => {
+      message.error(error.message)
+    },
+  })
+
+  const handlePasswordSubmit = async () => {
+    try {
+      const values = await passwordForm.validateFields()
+      passwordMutation.mutate(values.password)
+    } catch {
+      // validation error
+    }
+  }
 
   const handleCommissionSubmit = async () => {
     try {
@@ -212,7 +237,10 @@ export function VendorDetailPage() {
       label: '기본 정보',
       children: (
         <>
-          <div style={{ marginBottom: 12, textAlign: 'right' }}>
+          <div style={{ marginBottom: 12, textAlign: 'right', display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+            <Button icon={<LockOutlined />} onClick={() => setIsPasswordModalOpen(true)}>
+              비밀번호 변경
+            </Button>
             <Button icon={<EditOutlined />} onClick={() => navigate(`/vendors/${id}/edit`)}>
               수정
             </Button>
@@ -390,6 +418,36 @@ export function VendorDetailPage() {
             rules={[{ required: true, message: '변경 사유를 입력하세요' }]}
           >
             <Input.TextArea rows={3} placeholder="수수료 변경 사유를 입력하세요" />
+          </Form.Item>
+        </Form>
+      </Modal>
+
+      {/* 비밀번호 변경 모달 */}
+      <Modal
+        title="비밀번호 변경"
+        open={isPasswordModalOpen}
+        onOk={handlePasswordSubmit}
+        onCancel={() => {
+          setIsPasswordModalOpen(false)
+          passwordForm.resetFields()
+        }}
+        confirmLoading={passwordMutation.isPending}
+        okText="변경"
+        cancelText="취소"
+      >
+        <Form form={passwordForm} layout="vertical">
+          <Form.Item label="사업주">
+            <strong>{vendor.name}</strong> ({vendor.email})
+          </Form.Item>
+          <Form.Item
+            name="password"
+            label="새 비밀번호"
+            rules={[
+              { required: true, message: '비밀번호를 입력하세요' },
+              { min: 6, message: '6자 이상 입력해주세요' },
+            ]}
+          >
+            <Input.Password placeholder="6자 이상 입력" style={{ width: 240 }} />
           </Form.Item>
         </Form>
       </Modal>

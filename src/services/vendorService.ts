@@ -87,6 +87,22 @@ export async function createVendor(input: BusinessOwnerCreateInput): Promise<Bus
   return vendor
 }
 
+// 사업주 비밀번호 변경 (Edge Function)
+export async function updateVendorPassword(userId: string, password: string): Promise<void> {
+  const response = await supabase.functions.invoke('update-business-owner-password', {
+    body: { user_id: userId, password },
+  })
+
+  if (response.error) {
+    throw new Error(response.error.message || '비밀번호 변경에 실패했습니다')
+  }
+
+  const result = response.data
+  if (!result.success) {
+    throw new Error(result.error || '비밀번호 변경에 실패했습니다')
+  }
+}
+
 // 사업주 수정
 export async function updateVendor(
   id: string,
