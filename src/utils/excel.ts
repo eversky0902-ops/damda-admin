@@ -322,6 +322,7 @@ interface PartnerInquiryForExcel {
 export const VENDOR_UPLOAD_COLUMNS = [
   { key: 'id', header: 'ID', required: false }, // ID가 있으면 수정, 없으면 신규
   { key: 'email', header: '이메일', required: true },
+  { key: 'password', header: '비밀번호', required: false }, // 미입력 시 기본값: damda1234!
   { key: 'name', header: '사업자명', required: true },
   { key: 'business_number', header: '사업자번호', required: true },
   { key: 'representative', header: '대표자', required: true },
@@ -567,6 +568,11 @@ export function parseVendorExcelData(
       return
     }
     converted.business_number = businessNumber
+
+    // 비밀번호 기본값 (신규 생성 시 ID가 없으면 비밀번호 필요)
+    if (!converted.id && !converted.password) {
+      converted.password = 'damda1234!'
+    }
 
     // 수수료율 변환
     if (converted.commission_rate) {
