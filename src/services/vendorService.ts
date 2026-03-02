@@ -64,39 +64,29 @@ export async function getVendor(id: string): Promise<BusinessOwner> {
   return data as BusinessOwner
 }
 
-// 사업주 생성
+// 사업주 생성 (Edge Function으로 Auth 계정 + business_owners 동시 생성)
 export async function createVendor(input: BusinessOwnerCreateInput): Promise<BusinessOwner> {
-  // business_owners에 데이터 추가 (id는 자동 생성)
-  // 사업주 로그인 기능은 2차 버전에서 구현 예정
-  const { data, error } = await supabase
-    .from('business_owners')
-    .insert({
-      email: input.email,
-      name: input.name,
-      business_number: input.business_number,
-      representative: input.representative,
-      contact_name: input.contact_name,
-      contact_phone: input.contact_phone,
-      address: input.address,
-      address_detail: input.address_detail || null,
-      zipcode: input.zipcode || null,
-      bank_name: input.bank_name || null,
-      bank_account: input.bank_account || null,
-      bank_holder: input.bank_holder || null,
-      logo_url: input.logo_url || null,
-      commission_rate: input.commission_rate ?? 10,
-    })
-    .select()
-    .single()
+  const { data: { session } } = await supabase.auth.getSession()
 
-  if (error) {
-    throw new Error(error.message)
+  const response = await supabase.functions.invoke('create-business-owner', {
+    body: input,
+  })
+
+  if (response.error) {
+    throw new Error(response.error.message || '사업주 생성에 실패했습니다')
   }
 
-  // 활동 로그 기록
-  await logCreate('business_owner', data.id, data as Record<string, unknown>)
+  const result = response.data
+  if (!result.success) {
+    throw new Error(result.error || '사업주 생성에 실패했습니다')
+  }
 
-  return data as BusinessOwner
+  const vendor = result.vendor as BusinessOwner
+
+  // 활동 로그 기록
+  await logCreate('business_owner', vendor.id, vendor as unknown as Record<string, unknown>)
+
+  return vendor
 }
 
 // 사업주 수정

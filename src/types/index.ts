@@ -80,6 +80,7 @@ export interface BusinessOwner {
 // 사업주 생성 입력
 export interface BusinessOwnerCreateInput {
   email: string
+  password: string
   name: string
   business_number: string
   representative: string

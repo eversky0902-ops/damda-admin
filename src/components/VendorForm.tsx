@@ -209,20 +209,40 @@ export function VendorForm({
             <LogoUpload vendorId={vendorId} />
           </Form.Item>
 
-          <Form.Item
-            name="email"
-            label="이메일"
-            rules={[
-              { required: true, message: '이메일을 입력하세요' },
-              { type: 'email', message: '올바른 이메일 형식이 아닙니다' },
-            ]}
-          >
-            <Input
-              placeholder="example@email.com"
-              style={{ maxWidth: 320 }}
-              disabled={mode === 'edit'}
-            />
-          </Form.Item>
+          <Row gutter={24}>
+            <Col>
+              <Form.Item
+                name="email"
+                label="이메일"
+                rules={[
+                  { required: true, message: '이메일을 입력하세요' },
+                  { type: 'email', message: '올바른 이메일 형식이 아닙니다' },
+                ]}
+                extra={!isEdit ? '사업주 포털 로그인 ID로 사용됩니다' : undefined}
+              >
+                <Input
+                  placeholder="example@email.com"
+                  style={{ width: 320 }}
+                  disabled={isEdit}
+                />
+              </Form.Item>
+            </Col>
+            {!isEdit && (
+              <Col>
+                <Form.Item
+                  name="password"
+                  label="비밀번호"
+                  rules={[
+                    { required: true, message: '비밀번호를 입력하세요' },
+                    { min: 6, message: '6자 이상 입력해주세요' },
+                  ]}
+                  extra="사업주 포털 로그인 비밀번호"
+                >
+                  <Input.Password placeholder="6자 이상" style={{ width: 200 }} />
+                </Form.Item>
+              </Col>
+            )}
+          </Row>
 
           <Row gutter={24}>
             <Col>
