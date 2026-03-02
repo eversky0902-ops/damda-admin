@@ -130,10 +130,10 @@ export async function getSettlement(id: string): Promise<SettlementWithVendor> {
 
 // 정산 생성
 export async function createSettlement(input: SettlementCreateInput): Promise<Settlement> {
-  // 수수료 금액 계산
+  // 수수료 금액 계산 (total_sales는 이미 환불 건 제외된 금액)
   const commission_amount = Math.round(input.total_sales * (input.commission_rate / 100))
   const refund_amount = input.refund_amount || 0
-  const settlement_amount = input.total_sales - commission_amount - refund_amount
+  const settlement_amount = input.total_sales - commission_amount
 
   const { data, error } = await supabase
     .from('settlements')
@@ -172,7 +172,7 @@ export async function updateSettlement(id: string, input: SettlementUpdateInput)
     const refund_amount = input.refund_amount ?? current.refund_amount
 
     updateData.commission_amount = Math.round(total_sales * (commission_rate / 100))
-    updateData.settlement_amount = total_sales - (updateData.commission_amount as number) - refund_amount
+    updateData.settlement_amount = total_sales - (updateData.commission_amount as number)
   }
 
   const { data, error } = await supabase

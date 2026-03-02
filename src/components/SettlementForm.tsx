@@ -78,9 +78,9 @@ export function SettlementForm({
   // 수수료 금액 및 정산금 자동 계산
   const calculatedValues = useMemo(() => {
     const commissionAmount = Math.round(totalSales * (commissionRate / 100))
-    const settlementAmount = totalSales - commissionAmount - refundAmount
+    const settlementAmount = totalSales - commissionAmount
     return { commissionAmount, settlementAmount }
-  }, [totalSales, commissionRate, refundAmount])
+  }, [totalSales, commissionRate])
 
   // 초기값 설정
   useEffect(() => {
@@ -389,7 +389,7 @@ export function SettlementForm({
             </Row>
             <div style={{ marginTop: 8 }}>
               <Text type="secondary" style={{ fontSize: 12 }}>
-                정산금 = 총 매출 - 수수료 금액 - 환불 금액
+                정산금 = 총 매출 - 수수료 금액 (총 매출은 환불 건 제외)
               </Text>
             </div>
           </div>
