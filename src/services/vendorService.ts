@@ -66,8 +66,6 @@ export async function getVendor(id: string): Promise<BusinessOwner> {
 
 // 사업주 생성 (Edge Function으로 Auth 계정 + business_owners 동시 생성)
 export async function createVendor(input: BusinessOwnerCreateInput): Promise<BusinessOwner> {
-  const { data: { session } } = await supabase.auth.getSession()
-
   const response = await supabase.functions.invoke('create-business-owner', {
     body: input,
   })
