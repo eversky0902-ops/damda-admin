@@ -54,7 +54,7 @@ export async function getSettlements(
     .from('settlements')
     .select(`
       *,
-      business_owner:business_owners!settlements_business_owner_id_fkey(id, name, email, bank_name, bank_account, bank_holder)
+      business_owner:business_owners!settlements_business_owner_id_fkey(id, name, email, bank_name, bank_account, bank_holder, tax_email)
     `, { count: 'exact' })
 
   // 상태 필터
@@ -117,7 +117,7 @@ export async function getSettlement(id: string): Promise<SettlementWithVendor> {
     .from('settlements')
     .select(`
       *,
-      business_owner:business_owners!settlements_business_owner_id_fkey(id, name, email, bank_name, bank_account, bank_holder)
+      business_owner:business_owners!settlements_business_owner_id_fkey(id, name, email, bank_name, bank_account, bank_holder, tax_email)
     `)
     .eq('id', id)
     .single()
