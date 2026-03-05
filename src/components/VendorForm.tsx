@@ -381,6 +381,16 @@ export function VendorForm({
             </Col>
           </Row>
 
+          <Form.Item
+            name="tax_email"
+            label="세금계산서 E-Mail"
+            rules={[
+              { type: 'email', message: '올바른 이메일 형식이 아닙니다' },
+            ]}
+          >
+            <Input placeholder="tax@example.com" style={{ width: 320 }} />
+          </Form.Item>
+
           {!isEdit && (
             <Form.Item
               name="commission_rate"

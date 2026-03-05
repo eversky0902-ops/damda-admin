@@ -40,6 +40,7 @@ export interface SettlementWithVendor extends Settlement {
     bank_name?: string
     bank_account?: string
     bank_holder?: string
+    tax_email?: string
   }
 }
 

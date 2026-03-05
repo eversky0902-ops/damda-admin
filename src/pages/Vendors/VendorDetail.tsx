@@ -280,6 +280,7 @@ export function VendorDetailPage() {
             <Descriptions.Item label="은행명">{vendor.bank_name || '-'}</Descriptions.Item>
             <Descriptions.Item label="계좌번호">{vendor.bank_account || '-'}</Descriptions.Item>
             <Descriptions.Item label="예금주">{vendor.bank_holder || '-'}</Descriptions.Item>
+            <Descriptions.Item label="세금계산서 E-Mail">{vendor.tax_email || '-'}</Descriptions.Item>
             <Descriptions.Item label="가입일">
               {dayjs(vendor.created_at).format(DATE_FORMAT)}
             </Descriptions.Item>

@@ -55,3 +55,8 @@ body {
 /* RangePicker 단일 캘린더 (한달만 표시) */
 .single-calendar-range .ant-picker-panels > *:last-child { display: none; }
 .single-calendar-range .ant-picker-footer-extra { display: none; }
+/* 단일 캘린더에서 오른쪽 화살표(다음 월/년) 표시 */
+.single-calendar-range .ant-picker-panels > *:first-child .ant-picker-header-super-next-btn,
+.single-calendar-range .ant-picker-panels > *:first-child .ant-picker-header-next-btn {
+  visibility: visible !important;
+}

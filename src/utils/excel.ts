@@ -16,6 +16,7 @@ export const VENDOR_EXCEL_COLUMNS = [
   { key: 'bank_name', header: '은행명' },
   { key: 'bank_account', header: '계좌번호' },
   { key: 'bank_holder', header: '예금주' },
+  { key: 'tax_email', header: '세금계산서 E-Mail' },
   { key: 'commission_rate', header: '수수료율(%)' },
   { key: 'status', header: '상태' },
   { key: 'created_at', header: '가입일' },
@@ -40,6 +41,7 @@ export const PRODUCT_EXCEL_COLUMNS = [
   { key: 'region', header: '지역' },
   { key: 'is_visible', header: '노출여부' },
   { key: 'is_sold_out', header: '품절여부' },
+  { key: 'available_time_slots', header: '운영시간' },
   { key: 'view_count', header: '조회수' },
   { key: 'created_at', header: '등록일' },
 ] as const
@@ -171,6 +173,7 @@ export const SETTLEMENT_LIST_EXCEL_COLUMNS = [
   { key: 'bank_name', header: '은행명' },
   { key: 'bank_account', header: '계좌번호' },
   { key: 'bank_holder', header: '예금주' },
+  { key: 'tax_email', header: '세금계산서 E-Mail' },
   { key: 'period', header: '정산기간' },
   { key: 'total_sales', header: '총매출' },
   { key: 'commission_rate', header: '수수료율(%)' },
@@ -194,6 +197,7 @@ export function formatSettlementsForExcel(settlements: SettlementListForExcel[])
     bank_name: s.business_owner?.bank_name || '',
     bank_account: s.business_owner?.bank_account || '',
     bank_holder: s.business_owner?.bank_holder || '',
+    tax_email: s.business_owner?.tax_email || '',
     period: `${s.settlement_period_start} ~ ${s.settlement_period_end}`,
     total_sales: s.total_sales,
     commission_rate: s.commission_rate,
@@ -216,7 +220,7 @@ interface SettlementListForExcel {
   settlement_amount: number
   status: string
   settled_at: string | null
-  business_owner?: { name: string; bank_name?: string; bank_account?: string; bank_holder?: string }
+  business_owner?: { name: string; bank_name?: string; bank_account?: string; bank_holder?: string; tax_email?: string }
 }
 
 // 정산 결제내역 엑셀 다운로드용 컬럼 정의
@@ -334,6 +338,7 @@ export const VENDOR_UPLOAD_COLUMNS = [
   { key: 'bank_name', header: '은행명', required: false },
   { key: 'bank_account', header: '계좌번호', required: false },
   { key: 'bank_holder', header: '예금주', required: false },
+  { key: 'tax_email', header: '세금계산서 E-Mail', required: false },
   { key: 'commission_rate', header: '수수료율(%)', required: false },
 ] as const
 
@@ -354,6 +359,7 @@ export const PRODUCT_UPLOAD_COLUMNS = [
   { key: 'address', header: '주소', required: false },
   { key: 'region', header: '지역', required: false },
   { key: 'is_visible', header: '노출여부(Y/N)', required: false },
+  { key: 'is_sold_out', header: '품절여부(Y/N)', required: false },
   { key: 'options', header: '옵션(이름:가격:필수|...)', required: false },
   { key: 'available_time_slots', header: '운영시간(요일:시작-종료|...)', required: false },
 ] as const
@@ -420,6 +426,9 @@ export function formatProductsForExcel(products: Product[]) {
     category_name: product.category?.name || '',
     is_visible: product.is_visible ? 'Y' : 'N',
     is_sold_out: product.is_sold_out ? 'Y' : 'N',
+    available_time_slots: product.available_time_slots
+      ? product.available_time_slots.map((s) => `${s.day}:${s.start}-${s.end}`).join('|')
+      : '',
   }))
 }
 
@@ -697,8 +706,9 @@ export function parseProductExcelData(
       headerKeyMap[col.header] = col.key
     }
   })
-  // 다운로드 헤더 '노출여부' → 업로드 키 'is_visible' 매핑 (업로드 헤더는 '노출여부(Y/N)')
+  // 다운로드 헤더 → 업로드 키 매핑 (다운로드 헤더와 업로드 헤더가 다른 경우)
   headerKeyMap['노출여부'] = 'is_visible'
+  headerKeyMap['품절여부'] = 'is_sold_out'
 
   // 업로드 시 유효한 키 목록 (이 키만 서비스로 전달)
   const validKeys = new Set<string>(PRODUCT_UPLOAD_COLUMNS.map((col) => col.key))
@@ -783,6 +793,14 @@ export function parseProductExcelData(
       converted.is_visible = true
     }
 
+    // 품절여부 변환
+    if (converted.is_sold_out !== undefined && converted.is_sold_out !== '') {
+      const soldOut = String(converted.is_sold_out).toUpperCase()
+      converted.is_sold_out = soldOut === 'Y' || soldOut === 'YES' || soldOut === '1'
+    } else {
+      converted.is_sold_out = false
+    }
+
     // 옵션 파싱
     if (converted.options) {
       const { options, error } = parseOptionsString(String(converted.options))
@@ -829,6 +847,7 @@ export function downloadVendorTemplate() {
       '신한은행',
       '110-123-456789',
       '홍길동',
+      'tax@example.com',
       '10',
     ],
   ]
@@ -890,6 +909,7 @@ export function downloadProductTemplate() {
       '서울시 강남구',
       '서울',
       'Y',
+      'N',
       '추가인원:5000:N|특별케어:10000:Y',
       '1:09:00-18:00|2:09:00-18:00|3:09:00-18:00|4:09:00-18:00|5:09:00-18:00',
     ],
@@ -932,6 +952,9 @@ export function downloadProductTemplate() {
     [''],
     ['[노출여부]'],
     ['Y 또는 N으로 입력 (생략 시 Y)'],
+    [''],
+    ['[품절여부]'],
+    ['Y 또는 N으로 입력 (생략 시 N)'],
   ]
   const guideWs = XLSX.utils.aoa_to_sheet(guideData)
   guideWs['!cols'] = [{ wch: 60 }]
