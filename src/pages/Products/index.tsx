@@ -97,7 +97,7 @@ export function ProductsPage() {
       if (result.success > 0) {
         // 목록 + 개별 상품 상세 쿼리 모두 무효화하여 즉시 반영
         queryClient.invalidateQueries({ queryKey: ['products'] })
-        queryClient.invalidateQueries({ queryKey: ['product'] })
+        queryClient.invalidateQueries({ queryKey: ['product'], refetchType: 'all' })
       }
     },
     onError: (error) => {
