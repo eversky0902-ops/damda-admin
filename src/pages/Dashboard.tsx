@@ -294,7 +294,7 @@ export function DashboardPage() {
               formatter={(value) => Number(value).toLocaleString()}
             />
             <div style={{ marginTop: 8, fontSize: 12, color: '#999' }}>
-              순매출 - 플랫폼수수료({commissionRate}%)
+              사업주 정산 금액
             </div>
           </Card>
         </Col>
