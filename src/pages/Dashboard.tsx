@@ -294,7 +294,7 @@ export function DashboardPage() {
               formatter={(value) => Number(value).toLocaleString()}
             />
             <div style={{ marginTop: 8, fontSize: 12, color: '#999' }}>
-              플랫폼 수수료 {commissionRate}% 제외
+              취소위약금 - 플랫폼수익({commissionRate}%), 전체취소 시 수수료 0원
             </div>
           </Card>
         </Col>

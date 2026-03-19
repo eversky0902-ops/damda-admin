@@ -42,9 +42,10 @@ export interface DailyRevenueDetailData {
   displayDate: string
   revenue: number          // 매출액 (결제 완료)
   refundAmount: number     // 환불액
-  cancelFee: number        // 취소수수료
+  cancelFee: number        // 취소수수료 (매출액 - 환불액)
   netRevenue: number       // 순매출 (매출 - 환불)
-  settlementAmount: number // 정산액 (매출 - 플랫폼수수료)
+  platformFee: number      // 플랫폼 수익 (매출액 × 수수료율, 전체취소 시 0)
+  settlementAmount: number // 정산액 (취소위약금 - 플랫폼수익)
   count: number            // 결제 건수
 }
 
@@ -342,16 +343,25 @@ export async function getDailyRevenueDetail(
     : 10
   const platformCommissionRate = commissionRatePercent / 100
 
-  const data = Array.from(dailyMap.entries()).map(([date, d]) => ({
-    date,
-    displayDate: `${parseInt(date.split('-')[1])}/${parseInt(date.split('-')[2])}`,
-    revenue: d.revenue,
-    refundAmount: d.refundAmount,
-    cancelFee: d.cancelFee,
-    netRevenue: d.revenue - d.refundAmount,
-    settlementAmount: Math.round(d.revenue * (1 - platformCommissionRate)),
-    count: d.count,
-  }))
+  const data = Array.from(dailyMap.entries()).map(([date, d]) => {
+    // 플랫폼 수익: 환불액 == 매출액(전체취소)이면 0원, 아니면 매출액 × 수수료율
+    const isFullRefund = d.revenue > 0 && d.refundAmount >= d.revenue
+    const platformFee = isFullRefund ? 0 : Math.round(d.revenue * platformCommissionRate)
+    // 정산액: 취소위약금(cancelFee) - 플랫폼수익
+    const settlementAmount = d.cancelFee - platformFee
+
+    return {
+      date,
+      displayDate: `${parseInt(date.split('-')[1])}/${parseInt(date.split('-')[2])}`,
+      revenue: d.revenue,
+      refundAmount: d.refundAmount,
+      cancelFee: d.cancelFee,
+      netRevenue: d.revenue - d.refundAmount,
+      platformFee,
+      settlementAmount: Math.max(0, settlementAmount),
+      count: d.count,
+    }
+  })
 
   return { data, commissionRate: commissionRatePercent }
 }
