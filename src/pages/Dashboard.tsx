@@ -63,7 +63,7 @@ export function DashboardPage() {
 
     switch (period) {
       case '1d':
-        start = end.subtract(1, 'day')
+        start = end
         break
       case '1m':
         start = end.subtract(1, 'month')
@@ -294,7 +294,7 @@ export function DashboardPage() {
               formatter={(value) => Number(value).toLocaleString()}
             />
             <div style={{ marginTop: 8, fontSize: 12, color: '#999' }}>
-              취소위약금 - 플랫폼수익({commissionRate}%), 전체취소 시 수수료 0원
+              순매출 - 플랫폼수수료({commissionRate}%)
             </div>
           </Card>
         </Col>

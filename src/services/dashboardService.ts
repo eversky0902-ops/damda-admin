@@ -267,13 +267,14 @@ export async function getDailyRevenueDetail(
   endDate: string
 ): Promise<DailyRevenueDetailResult> {
   const [paymentsData, refundsData, commissionSetting] = await Promise.all([
-    // 결제 완료 데이터
+    // 결제 완료 데이터 (환불 처리된 건도 매출에 포함)
     supabase
       .from('payments')
       .select('amount, paid_at')
-      .eq('status', 'paid')
-      .gte('paid_at', `${startDate}T00:00:00`)
-      .lte('paid_at', `${endDate}T23:59:59`)
+      .in('status', ['paid', 'cancelled'])
+      .not('paid_at', 'is', null)
+      .gte('paid_at', `${startDate}T00:00:00+09:00`)
+      .lte('paid_at', `${endDate}T23:59:59+09:00`)
       .order('paid_at', { ascending: true }),
 
     // 환불 완료 데이터
@@ -281,8 +282,8 @@ export async function getDailyRevenueDetail(
       .from('refunds')
       .select('refund_amount, original_amount, refunded_at')
       .eq('status', 'completed')
-      .gte('refunded_at', `${startDate}T00:00:00`)
-      .lte('refunded_at', `${endDate}T23:59:59`)
+      .gte('refunded_at', `${startDate}T00:00:00+09:00`)
+      .lte('refunded_at', `${endDate}T23:59:59+09:00`)
       .order('refunded_at', { ascending: true }),
 
     // 플랫폼 수수료율 설정
@@ -312,10 +313,17 @@ export async function getDailyRevenueDetail(
     dailyMap.set(dateStr, { revenue: 0, refundAmount: 0, cancelFee: 0, count: 0 })
   }
 
+  // UTC → KST 날짜 변환 헬퍼
+  const toKSTDateStr = (utcStr: string) => {
+    const d = new Date(utcStr)
+    d.setHours(d.getHours() + 9)
+    return d.toISOString().split('T')[0]
+  }
+
   // 결제 데이터 집계
   paymentsData.data?.forEach((row) => {
     if (row.paid_at) {
-      const dateStr = row.paid_at.split('T')[0]
+      const dateStr = toKSTDateStr(row.paid_at)
       const existing = dailyMap.get(dateStr)
       if (existing) {
         existing.revenue += row.amount || 0
@@ -327,7 +335,7 @@ export async function getDailyRevenueDetail(
   // 환불 데이터 집계
   refundsData.data?.forEach((row) => {
     if (row.refunded_at) {
-      const dateStr = row.refunded_at.split('T')[0]
+      const dateStr = toKSTDateStr(row.refunded_at)
       const existing = dailyMap.get(dateStr)
       if (existing) {
         existing.refundAmount += row.refund_amount || 0
@@ -344,11 +352,12 @@ export async function getDailyRevenueDetail(
   const platformCommissionRate = commissionRatePercent / 100
 
   const data = Array.from(dailyMap.entries()).map(([date, d]) => {
-    // 플랫폼 수익: 환불액 == 매출액(전체취소)이면 0원, 아니면 매출액 × 수수료율
-    const isFullRefund = d.revenue > 0 && d.refundAmount >= d.revenue
-    const platformFee = isFullRefund ? 0 : Math.round(d.revenue * platformCommissionRate)
-    // 정산액: 취소위약금(cancelFee) - 플랫폼수익
-    const settlementAmount = d.cancelFee - platformFee
+    // 순매출: 매출액 - 환불액
+    const netRevenue = d.revenue - d.refundAmount
+    // 플랫폼 수수료: 매출액 × 수수료율
+    const platformFee = d.revenue > 0 ? Math.round(d.revenue * platformCommissionRate) : 0
+    // 정산액: 순매출 - 플랫폼수수료
+    const settlementAmount = netRevenue - platformFee
 
     return {
       date,
