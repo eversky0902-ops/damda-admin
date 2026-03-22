@@ -101,7 +101,6 @@ export function DashboardPage() {
     queryFn: () => getDailyRevenueDetail(startDateStr, endDateStr),
   })
   const dailyRevenueDetail = revenueResult?.data
-  const commissionRate = revenueResult?.commissionRate ?? 10
 
   // 요일별 예약 분포
   const { data: weekdayData } = useQuery({
