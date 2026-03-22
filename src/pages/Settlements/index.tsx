@@ -2,11 +2,11 @@ import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Table, Button, Tag, Select, DatePicker, Input, message, Popconfirm, Modal } from 'antd'
-import { PlusOutlined, SearchOutlined, CheckOutlined, ThunderboltOutlined, UnorderedListOutlined, DownloadOutlined } from '@ant-design/icons'
+import { PlusOutlined, SearchOutlined, CheckOutlined, ThunderboltOutlined, UnorderedListOutlined, DownloadOutlined, DeleteOutlined } from '@ant-design/icons'
 import type { ColumnsType } from 'antd/es/table'
 import dayjs from 'dayjs'
 
-import { getSettlements, bulkCompleteSettlements, bulkGenerateSettlements, type SettlementWithVendor } from '@/services/settlementService'
+import { getSettlements, bulkCompleteSettlements, bulkDeleteSettlements, bulkGenerateSettlements, type SettlementWithVendor } from '@/services/settlementService'
 import { downloadExcel, formatSettlementsForExcel, SETTLEMENT_LIST_EXCEL_COLUMNS } from '@/utils/excel'
 import { DATE_FORMAT, DEFAULT_PAGE_SIZE } from '@/constants'
 import type { SettlementStatus } from '@/types'
@@ -73,6 +73,18 @@ export function SettlementsPage() {
     },
     onError: (error: Error) => {
       message.error(error.message || '처리에 실패했습니다')
+    },
+  })
+
+  const bulkDeleteMutation = useMutation({
+    mutationFn: (ids: string[]) => bulkDeleteSettlements(ids),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['settlements'] })
+      message.success(`${selectedRowKeys.length}건의 정산이 삭제되었습니다`)
+      setSelectedRowKeys([])
+    },
+    onError: (error: Error) => {
+      message.error(error.message || '삭제에 실패했습니다')
     },
   })
 
@@ -298,6 +310,32 @@ export function SettlementsPage() {
               loading={bulkCompleteMutation.isPending}
             >
               정산 완료 ({selectedPendingCount})
+            </Button>
+          </Popconfirm>
+          <Popconfirm
+            title="일괄 삭제"
+            description={`선택한 대기중 ${selectedPendingCount}건을 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.`}
+            onConfirm={() => {
+              const pendingIds = (data?.data || [])
+                .filter((s) => selectedRowKeys.includes(s.id) && s.status === 'pending')
+                .map((s) => s.id)
+              if (pendingIds.length === 0) {
+                message.warning('삭제 가능한 대기중 정산이 없습니다')
+                return
+              }
+              bulkDeleteMutation.mutate(pendingIds)
+            }}
+            okText="삭제"
+            cancelText="취소"
+            okButtonProps={{ danger: true }}
+          >
+            <Button
+              danger
+              icon={<DeleteOutlined />}
+              disabled={selectedPendingCount === 0}
+              loading={bulkDeleteMutation.isPending}
+            >
+              삭제 ({selectedPendingCount})
             </Button>
           </Popconfirm>
           <Button size="small" onClick={() => setSelectedRowKeys([])}>선택 해제</Button>

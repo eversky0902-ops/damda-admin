@@ -182,18 +182,20 @@ export function SettlementDetailPage() {
               </Popconfirm>
             </>
           )}
-          <Popconfirm
-            title="정산 삭제"
-            description="정산을 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다."
-            onConfirm={() => deleteMutation.mutate()}
-            okText="삭제"
-            cancelText="취소"
-            okButtonProps={{ danger: true }}
-          >
-            <Button danger icon={<DeleteOutlined />} loading={deleteMutation.isPending}>
-              삭제
-            </Button>
-          </Popconfirm>
+          {settlement.status === 'pending' && (
+            <Popconfirm
+              title="정산 삭제"
+              description="정산을 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다."
+              onConfirm={() => deleteMutation.mutate()}
+              okText="삭제"
+              cancelText="취소"
+              okButtonProps={{ danger: true }}
+            >
+              <Button danger icon={<DeleteOutlined />} loading={deleteMutation.isPending}>
+                삭제
+              </Button>
+            </Popconfirm>
+          )}
         </Space>
       </div>
 

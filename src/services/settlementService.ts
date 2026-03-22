@@ -236,6 +236,18 @@ export async function deleteSettlement(id: string): Promise<void> {
   }
 }
 
+// 정산 일괄 삭제
+export async function bulkDeleteSettlements(ids: string[]): Promise<void> {
+  const { error } = await supabase
+    .from('settlements')
+    .delete()
+    .in('id', ids)
+
+  if (error) {
+    throw new Error(error.message)
+  }
+}
+
 // 전체 사업주 목록 조회 (셀렉트박스용 - 정산에서는 비활성 사업주도 포함)
 export async function getVendorsForSelect(includeInactive = false): Promise<{ id: string; name: string; commission_rate: number; status: string }[]> {
   let query = supabase
