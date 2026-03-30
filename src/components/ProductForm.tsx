@@ -43,7 +43,7 @@ import dayjs from 'dayjs'
 
 import { getBusinessOwners, getCategories } from '@/services/productService'
 import { uploadProductImage, uploadImage } from '@/services/storageService'
-import { REGION_OPTIONS, DAY_OF_WEEK_LABEL, TIME_SLOT_INTERVAL_OPTIONS } from '@/constants'
+import { REGION_CASCADER_OPTIONS, DAY_OF_WEEK_LABEL, TIME_SLOT_INTERVAL_OPTIONS } from '@/constants'
 import type { Product, TimeSlot, TimeSlotMode, TimeSlotInterval, Category } from '@/types'
 
 const { Text } = Typography
@@ -711,12 +711,27 @@ export function ProductForm({
 
           <Row gutter={24}>
             <Col>
-              <Form.Item name="region" label="지역">
-                <Select
+              <Form.Item
+                name="region"
+                label="지역"
+                getValueProps={(value) => ({
+                  value: value ? value.split(' ') : undefined,
+                })}
+                getValueFromEvent={(value: string[]) =>
+                  value && value.length === 2 ? value.join(' ') : value?.[0] || null
+                }
+              >
+                <Cascader
                   placeholder="지역 선택"
-                  style={{ width: 120 }}
+                  style={{ width: 220 }}
                   allowClear
-                  options={REGION_OPTIONS}
+                  options={REGION_CASCADER_OPTIONS}
+                  showSearch={{
+                    filter: (input, path) =>
+                      path.some((option) =>
+                        (option.label as string).toLowerCase().includes(input.toLowerCase())
+                      ),
+                  }}
                 />
               </Form.Item>
             </Col>
