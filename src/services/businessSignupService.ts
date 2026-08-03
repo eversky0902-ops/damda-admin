@@ -10,6 +10,7 @@ export type BusinessSignupStatus = 'pending' | 'approved' | 'rejected'
 export interface BusinessSignupRequest {
   id: string
   auth_user_id: string
+  owner_code: string | null
   email: string
   business_name: string
   business_number: string
@@ -26,6 +27,18 @@ export async function getBusinessSignupRequests(): Promise<BusinessSignupRequest
   const { data, error } = await signupSchema
     .from('business_owner_signup_requests')
     .select('*')
+    .order('created_at', { ascending: false })
+
+  if (error) throw new Error(error.message)
+  return (data || []) as BusinessSignupRequest[]
+}
+
+export async function getBusinessSignupRequestsByOwnerCode(ownerCode: string): Promise<BusinessSignupRequest[]> {
+  const { data, error } = await signupSchema
+    .from('business_owner_signup_requests')
+    .select('*')
+    .eq('owner_code', ownerCode)
+    .eq('status', 'pending')
     .order('created_at', { ascending: false })
 
   if (error) throw new Error(error.message)

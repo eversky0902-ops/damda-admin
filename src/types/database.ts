@@ -230,6 +230,7 @@ export type Database = {
           address: string
           address_detail: string | null
           auth_user_id: string | null
+          owner_code: string
           bank_account: string | null
           bank_holder: string | null
           bank_name: string | null
@@ -254,6 +255,7 @@ export type Database = {
           address: string
           address_detail?: string | null
           auth_user_id?: string | null
+          owner_code?: string
           bank_account?: string | null
           bank_holder?: string | null
           bank_name?: string | null
@@ -278,6 +280,7 @@ export type Database = {
           address?: string
           address_detail?: string | null
           auth_user_id?: string | null
+          owner_code?: string
           bank_account?: string | null
           bank_holder?: string | null
           bank_name?: string | null

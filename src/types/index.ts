@@ -57,6 +57,7 @@ export type VendorStatus = 'active' | 'inactive'
 export interface BusinessOwner {
   id: string
   auth_user_id: string | null
+  owner_code: string
   email: string
   name: string
   business_number: string

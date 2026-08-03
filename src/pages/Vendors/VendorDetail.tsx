@@ -19,6 +19,7 @@ import {
   Divider,
   List,
   Typography,
+  Alert,
 } from 'antd'
 import { ArrowLeftOutlined, EditOutlined, ShopOutlined, FileOutlined, FilePdfOutlined, FileImageOutlined, LockOutlined } from '@ant-design/icons'
 import type { ColumnsType } from 'antd/es/table'
@@ -37,6 +38,10 @@ import { useAuthStore } from '@/stores/authStore'
 import { formatPhoneNumber } from '@/utils/format'
 import { VENDOR_STATUS_LABEL, DATE_FORMAT, DEFAULT_PAGE_SIZE } from '@/constants'
 import type { Settlement, CommissionHistory, SettlementStatus, BusinessOwnerDocument } from '@/types'
+import {
+  approveBusinessSignup,
+  getBusinessSignupRequestsByOwnerCode,
+} from '@/services/businessSignupService'
 
 export function VendorDetailPage() {
   const { id } = useParams<{ id: string }>()
@@ -56,6 +61,12 @@ export function VendorDetailPage() {
     queryKey: ['vendor', id],
     queryFn: () => getVendor(id!),
     enabled: !!id,
+  })
+
+  const { data: matchingRequests = [], isLoading: isMatchingRequestsLoading } = useQuery({
+    queryKey: ['businessSignupRequests', 'ownerCode', vendor?.owner_code],
+    queryFn: () => getBusinessSignupRequestsByOwnerCode(vendor!.owner_code),
+    enabled: !!vendor?.owner_code,
   })
 
   // 정산 내역 조회
@@ -119,6 +130,28 @@ export function VendorDetailPage() {
       message.error(error.message)
     },
   })
+
+  const accountMatchingMutation = useMutation({
+    mutationFn: (requestId: string) => approveBusinessSignup(requestId, id!),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['vendor', id] })
+      queryClient.invalidateQueries({ queryKey: ['businessSignupRequests'] })
+      message.success('사업주 콘솔 계정이 연결되었습니다.')
+    },
+    onError: (error: Error) => {
+      message.error(error.message)
+    },
+  })
+
+  const handleAccountMatching = (requestId: string, email: string) => {
+    Modal.confirm({
+      title: '사업주 콘솔 계정 연결',
+      content: `${email} 계정을 ${vendor?.name || '이 사업주'}에 연결할까요?`,
+      okText: '연결',
+      cancelText: '취소',
+      onOk: () => accountMatchingMutation.mutateAsync(requestId),
+    })
+  }
 
   const handlePasswordSubmit = async () => {
     try {
@@ -246,6 +279,12 @@ export function VendorDetailPage() {
             </Button>
           </div>
           <Descriptions column={2} bordered size="small">
+            <Descriptions.Item label="사업주 코드">
+              <Typography.Text code copyable>{vendor.owner_code}</Typography.Text>
+            </Descriptions.Item>
+            <Descriptions.Item label="콘솔 계정">
+              {vendor.auth_user_id ? <Tag color="green">연결 완료</Tag> : <Tag color="orange">미연결</Tag>}
+            </Descriptions.Item>
             <Descriptions.Item label="사업자명">{vendor.name}</Descriptions.Item>
             <Descriptions.Item label="상태">
               <Space>
@@ -285,6 +324,41 @@ export function VendorDetailPage() {
               {dayjs(vendor.created_at).format(DATE_FORMAT)}
             </Descriptions.Item>
           </Descriptions>
+
+          <h4 style={{ marginTop: 24, marginBottom: 12 }}>사업주 콘솔 계정 매칭</h4>
+          <Alert
+            type="info"
+            showIcon
+            style={{ marginBottom: 12 }}
+            message={`회원가입 시 사업주 코드 ${vendor.owner_code}를 입력한 계정만 표시됩니다.`}
+          />
+          <List
+            size="small"
+            bordered
+            loading={isMatchingRequestsLoading}
+            locale={{ emptyText: '이 코드로 가입 승인 대기 중인 계정이 없습니다.' }}
+            dataSource={matchingRequests}
+            renderItem={(request) => (
+              <List.Item
+                actions={[
+                  <Button
+                    key="match"
+                    type="primary"
+                    size="small"
+                    loading={accountMatchingMutation.isPending}
+                    onClick={() => handleAccountMatching(request.id, request.email)}
+                  >
+                    {vendor.auth_user_id ? '이 계정으로 변경' : '계정 연결'}
+                  </Button>,
+                ]}
+              >
+                <List.Item.Meta
+                  title={request.email}
+                  description={`${request.business_name} · ${request.contact_name} · ${formatPhoneNumber(request.contact_phone)}`}
+                />
+              </List.Item>
+            )}
+          />
 
           <h4 style={{ marginTop: 24, marginBottom: 12 }}>사업자 서류 ({documents.length}개)</h4>
           {documents.length > 0 ? (

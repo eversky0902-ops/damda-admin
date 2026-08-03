@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Table, Button, Input, Select, Tag, Avatar, Dropdown, Modal, message, Upload, Alert } from 'antd'
+import { Table, Button, Input, Select, Tag, Avatar, Dropdown, Modal, message, Upload, Alert, Typography } from 'antd'
 import {
   PlusOutlined,
   SearchOutlined,
@@ -179,6 +179,13 @@ export function VendorsPage() {
       key: 'business_number',
     },
     {
+      title: '사업주 코드',
+      dataIndex: 'owner_code',
+      key: 'owner_code',
+      width: 145,
+      render: (code: string) => <Typography.Text code copyable>{code}</Typography.Text>,
+    },
+    {
       title: '대표자',
       dataIndex: 'representative',
       key: 'representative',
@@ -258,7 +265,7 @@ export function VendorsPage() {
         borderRadius: 6,
       }}>
         <Input
-          placeholder="사업자명 또는 사업자번호"
+          placeholder="사업자명, 사업자번호 또는 사업주 코드"
           value={searchInput}
           onChange={(e) => setSearchInput(e.target.value)}
           onPressEnter={handleSearch}

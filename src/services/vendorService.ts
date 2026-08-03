@@ -31,7 +31,7 @@ export async function getVendors(
 
   // 검색 (사업자명, 사업자번호)
   if (search) {
-    query = query.or(`name.ilike.%${search}%,business_number.ilike.%${search}%`)
+    query = query.or(`name.ilike.%${search}%,business_number.ilike.%${search}%,owner_code.ilike.%${search}%`)
   }
 
   // 정렬 및 페이지네이션

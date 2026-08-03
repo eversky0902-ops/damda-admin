@@ -4,6 +4,7 @@ import type { BusinessOwner, Product } from '@/types'
 // 사업주 엑셀 다운로드용 컬럼 정의
 export const VENDOR_EXCEL_COLUMNS = [
   { key: 'id', header: 'ID' },
+  { key: 'owner_code', header: '사업주코드' },
   { key: 'name', header: '사업자명' },
   { key: 'business_number', header: '사업자번호' },
   { key: 'representative', header: '대표자' },
