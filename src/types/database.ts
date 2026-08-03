@@ -229,6 +229,7 @@ export type Database = {
         Row: {
           address: string
           address_detail: string | null
+          auth_user_id: string | null
           bank_account: string | null
           bank_holder: string | null
           bank_name: string | null
@@ -252,6 +253,7 @@ export type Database = {
         Insert: {
           address: string
           address_detail?: string | null
+          auth_user_id?: string | null
           bank_account?: string | null
           bank_holder?: string | null
           bank_name?: string | null
@@ -275,6 +277,7 @@ export type Database = {
         Update: {
           address?: string
           address_detail?: string | null
+          auth_user_id?: string | null
           bank_account?: string | null
           bank_holder?: string | null
           bank_name?: string | null

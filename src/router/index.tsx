@@ -12,6 +12,7 @@ import { VendorsPage } from '@/pages/Vendors'
 import { VendorDetailPage } from '@/pages/Vendors/VendorDetail'
 import { VendorCreatePage } from '@/pages/Vendors/VendorCreate'
 import { VendorEditPage } from '@/pages/Vendors/VendorEdit'
+import { BusinessSignupsPage } from '@/pages/Vendors/BusinessSignups'
 import { CategoriesPage } from '@/pages/Categories'
 import { CategoryDetailPage } from '@/pages/Categories/CategoryDetail'
 import { CategoryCreatePage } from '@/pages/Categories/CategoryCreate'
@@ -118,6 +119,10 @@ export const router = createBrowserRouter([
       {
         path: 'vendors/:id/edit',
         element: <VendorEditPage />,
+      },
+      {
+        path: 'business-signups',
+        element: <BusinessSignupsPage />,
       },
       {
         path: 'categories',

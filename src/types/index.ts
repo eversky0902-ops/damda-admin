@@ -56,6 +56,7 @@ export type VendorStatus = 'active' | 'inactive'
 // 사업주 타입
 export interface BusinessOwner {
   id: string
+  auth_user_id: string | null
   email: string
   name: string
   business_number: string

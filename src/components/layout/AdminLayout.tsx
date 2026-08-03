@@ -17,6 +17,7 @@ import {
   LogoutOutlined,
   LockOutlined,
   FormOutlined,
+  UserAddOutlined,
 } from '@ant-design/icons'
 import { useUIStore } from '@/stores/uiStore'
 import { useAuthStore } from '@/stores/authStore'
@@ -43,6 +44,11 @@ const menuItems: MenuProps['items'] = [
     key: '/vendors',
     icon: <ShopOutlined />,
     label: '사업주 관리',
+  },
+  {
+    key: '/business-signups',
+    icon: <UserAddOutlined />,
+    label: '사업주 가입 승인',
   },
   {
     key: '/members',
