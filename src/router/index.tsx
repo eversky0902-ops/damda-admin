@@ -1,6 +1,7 @@
 import { createBrowserRouter, Navigate } from 'react-router-dom'
 import { AdminLayout } from '@/components/layout/AdminLayout'
 import { AuthLayout } from '@/components/layout/AuthLayout'
+import { SalesLayout } from '@/components/layout/SalesLayout'
 
 // Pages
 import { DashboardPage } from '@/pages/Dashboard'
@@ -33,6 +34,10 @@ import { SettlementCreatePage } from '@/pages/Settlements/SettlementCreate'
 import { SettlementEditPage } from '@/pages/Settlements/SettlementEdit'
 import { PartnerInquiriesPage } from '@/pages/PartnerInquiries'
 import { PartnerInquiryDetailPage } from '@/pages/PartnerInquiries/PartnerInquiryDetail'
+import { PartnerOnboardingsPage } from '@/pages/PartnerOnboardings'
+import { PartnerOnboardingCreatePage } from '@/pages/PartnerOnboardings/PartnerOnboardingCreate'
+import { PartnerOnboardingDetailPage } from '@/pages/PartnerOnboardings/PartnerOnboardingDetail'
+import { SalesLoginPage } from '@/pages/Sales/SalesLogin'
 
 // Stats Pages
 import { RegionalMonthlyStatsPage } from '@/pages/Stats/RegionalMonthlyStats'
@@ -70,6 +75,20 @@ import { AdminLogsPage } from '@/pages/settings/AdminLogs'
 
 // 라우터 설정
 export const router = createBrowserRouter([
+  {
+    path: '/sales/login',
+    element: <SalesLoginPage />,
+  },
+  {
+    path: '/sales',
+    element: <SalesLayout />,
+    children: [
+      { index: true, element: <Navigate to="/sales/onboardings" replace /> },
+      { path: 'onboardings', element: <PartnerOnboardingsPage basePath="/sales/onboardings" salesMode /> },
+      { path: 'onboardings/new', element: <PartnerOnboardingCreatePage basePath="/sales/onboardings" /> },
+      { path: 'onboardings/:id', element: <PartnerOnboardingDetailPage audience="sales" basePath="/sales/onboardings" /> },
+    ],
+  },
   {
     path: '/login',
     element: <AuthLayout />,
@@ -205,6 +224,19 @@ export const router = createBrowserRouter([
       {
         path: 'partner-inquiries/:id',
         element: <PartnerInquiryDetailPage />,
+      },
+      // Partner onboarding
+      {
+        path: 'partner-onboardings',
+        element: <PartnerOnboardingsPage />,
+      },
+      {
+        path: 'partner-onboardings/new',
+        element: <PartnerOnboardingCreatePage />,
+      },
+      {
+        path: 'partner-onboardings/:id',
+        element: <PartnerOnboardingDetailPage />,
       },
       // Stats
       {

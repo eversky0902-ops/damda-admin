@@ -123,7 +123,16 @@ export async function uploadVendorDocument(
 }
 
 // 사업주 문서 삭제
-export async function deleteVendorDocument(fileUrl: string): Promise<void> {
+export async function deleteVendorDocument(
+  fileUrl: string,
+  storageBucket?: string | null,
+  storagePath?: string | null,
+): Promise<void> {
+  if (storageBucket && storagePath) {
+    const { error } = await supabase.storage.from(storageBucket).remove([storagePath])
+    if (error) console.error('Failed to delete private vendor document:', error)
+    return
+  }
   const path = fileUrl.split('/public/')[1]
   if (!path) return
 

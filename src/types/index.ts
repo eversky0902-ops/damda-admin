@@ -80,6 +80,37 @@ export interface BusinessOwner {
   updated_at: string
 }
 
+export interface Business {
+  id: string
+  business_owner_id: string
+  business_code: string
+  name: string
+  business_number: string | null
+  representative: string | null
+  contact_name: string | null
+  contact_phone: string | null
+  email: string | null
+  address: string
+  address_detail: string | null
+  zipcode: string | null
+  latitude: number | null
+  longitude: number | null
+  logo_url: string | null
+  introduction: string | null
+  summary: string | null
+  parking_available: boolean
+  parking_notice: string | null
+  facilities: string[]
+  common_guide: string | null
+  common_precautions: string | null
+  directions?: string | null
+  status: VendorStatus
+  is_primary: boolean
+  created_at: string
+  updated_at: string
+  product_count?: number
+}
+
 // 사업주 생성 입력
 export interface BusinessOwnerCreateInput {
   email: string
@@ -288,6 +319,7 @@ export interface CategoryFilter {
 export interface Product {
   id: string
   business_owner_id: string
+  business_id?: string
   category_id: string | null
   name: string
   summary: string | null
@@ -298,6 +330,22 @@ export interface Product {
   min_participants: number
   max_participants: number
   duration_minutes: number | null
+  minimum_age?: number | null
+  recommended_age_min?: number | null
+  recommended_age_max?: number | null
+  booking_start_date?: string | null
+  booking_end_date?: string | null
+  booking_cutoff_hours?: number
+  allow_same_day_booking?: boolean
+  inclusions?: string | null
+  exclusions?: string | null
+  materials?: string | null
+  usage_method?: string | null
+  product_precautions?: string | null
+  reservation_notice?: string | null
+  refund_notice?: string | null
+  other_notice?: string | null
+  display_order?: number
   address: string | null
   address_detail: string | null
   latitude: number | null
@@ -311,6 +359,7 @@ export interface Product {
   updated_at: string
   // 조인 데이터 (일부 필드만 조회)
   business_owner?: Pick<BusinessOwner, 'id' | 'name' | 'email' | 'contact_phone'>
+  business?: Pick<Business, 'id' | 'name' | 'business_code'>
   category?: Pick<Category, 'id' | 'name' | 'parent_id'>
   options?: ProductOption[]
   images?: ProductImage[]
@@ -367,6 +416,7 @@ export interface ProductUnavailableDate {
 // 상품 생성 입력
 export interface ProductCreateInput {
   business_owner_id: string
+  business_id: string
   category_id?: string
   name: string
   summary?: string
@@ -377,11 +427,28 @@ export interface ProductCreateInput {
   min_participants?: number
   max_participants: number
   duration_minutes?: number
+  minimum_age?: number | null
+  recommended_age_min?: number | null
+  recommended_age_max?: number | null
+  booking_start_date?: string | null
+  booking_end_date?: string | null
+  booking_cutoff_hours?: number
+  allow_same_day_booking?: boolean
+  inclusions?: string | null
+  exclusions?: string | null
+  materials?: string | null
+  usage_method?: string | null
+  product_precautions?: string | null
+  reservation_notice?: string | null
+  refund_notice?: string | null
+  other_notice?: string | null
+  display_order?: number
   address?: string
   address_detail?: string
   region?: string
   available_time_slots?: TimeSlot[]
   is_visible?: boolean
+  is_sold_out?: boolean
   options?: Omit<ProductOption, 'id' | 'product_id' | 'created_at'>[]
   images?: string[]
   unavailable_dates?: { date: string; reason: string }[]
@@ -389,6 +456,7 @@ export interface ProductCreateInput {
 
 // 상품 수정 입력
 export interface ProductUpdateInput {
+  business_id?: string
   category_id?: string | null
   name?: string
   summary?: string | null
@@ -399,6 +467,22 @@ export interface ProductUpdateInput {
   min_participants?: number
   max_participants?: number
   duration_minutes?: number | null
+  minimum_age?: number | null
+  recommended_age_min?: number | null
+  recommended_age_max?: number | null
+  booking_start_date?: string | null
+  booking_end_date?: string | null
+  booking_cutoff_hours?: number
+  allow_same_day_booking?: boolean
+  inclusions?: string | null
+  exclusions?: string | null
+  materials?: string | null
+  usage_method?: string | null
+  product_precautions?: string | null
+  reservation_notice?: string | null
+  refund_notice?: string | null
+  other_notice?: string | null
+  display_order?: number
   address?: string | null
   address_detail?: string | null
   region?: string | null
@@ -414,6 +498,7 @@ export interface ProductUpdateInput {
 export interface ProductFilter {
   status?: 'all' | 'visible' | 'hidden' | 'sold_out'
   business_owner_id?: string
+  business_id?: string
   category_id?: string
   search?: string
 }
@@ -895,6 +980,8 @@ export interface BusinessOwnerDocument {
   document_type: BusinessOwnerDocumentType
   file_name: string
   file_url: string
+  storage_bucket?: string | null
+  storage_path?: string | null
   file_size: number | null
   mime_type: string | null
   sort_order: number

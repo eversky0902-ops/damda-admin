@@ -1,6 +1,7 @@
 import { supabase } from '@/lib/supabase'
 import { logCreate, logUpdate, logStatusChange } from '@/services/adminLogService'
 import type { Daycare, DaycareFilter, DaycareMemo, DaycareCreateInput, DaycareUpdateInput, PaginatedResponse, DaycareDocument, DaycareDocumentCreateInput } from '@/types'
+import type { TablesUpdate } from '@/types/database'
 
 interface GetDaycaresParams {
   page: number
@@ -129,7 +130,7 @@ export async function updateDaycareStatus(
     .eq('id', id)
     .single()
 
-  const updateData: Record<string, unknown> = {
+  const updateData: TablesUpdate<'daycares'> = {
     status,
     updated_at: new Date().toISOString(),
   }

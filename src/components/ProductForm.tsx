@@ -47,6 +47,7 @@ import {
   MAX_PRODUCT_DETAIL_IMAGES,
   MAX_PRODUCTS_PER_BUSINESS_OWNER,
 } from '@/services/productService'
+import { getBusinessesByOwner } from '@/services/businessService'
 import { uploadProductImage, uploadImage } from '@/services/storageService'
 import { REGION_CASCADER_OPTIONS, DAY_OF_WEEK_LABEL, TIME_SLOT_INTERVAL_OPTIONS } from '@/constants'
 import type { Product, TimeSlot, TimeSlotMode, TimeSlotInterval, Category } from '@/types'
@@ -122,6 +123,8 @@ export function ProductForm({
   isSubmitting = false,
 }: ProductFormProps) {
   const [form] = Form.useForm()
+  const selectedBusinessOwnerId = Form.useWatch('business_owner_id', form)
+  const selectedBusinessId = Form.useWatch('business_id', form)
   const [isPostcodeOpen, setIsPostcodeOpen] = useState(false)
   const isEdit = mode === 'edit'
   const quillRef = useRef<ReactQuill>(null)
@@ -253,6 +256,13 @@ export function ProductForm({
     queryKey: ['businessOwners'],
     queryFn: getBusinessOwners,
   })
+  const selectedVendor = vendors?.find((vendor) => vendor.id === selectedBusinessOwnerId)
+  const { data: businesses } = useQuery({
+    queryKey: ['businessesByOwner', selectedBusinessOwnerId],
+    queryFn: () => getBusinessesByOwner(selectedBusinessOwnerId),
+    enabled: !!selectedBusinessOwnerId,
+  })
+  const selectedBusiness = businesses?.find((business) => business.id === selectedBusinessId)
 
   // 카테고리 목록 (계층 구조)
   const { data: categories } = useQuery({
@@ -490,7 +500,10 @@ export function ProductForm({
       const category_id = categoryPath && categoryPath.length > 0 ? categoryPath[categoryPath.length - 1] : null
 
       // category_path는 제외하고 category_id 추가
-      const { category_path: _categoryPath, ...restValues } = values
+      const restValues = { ...values }
+      delete restValues.category_path
+      restValues.booking_start_date = values.booking_start_date ? dayjs(values.booking_start_date).format('YYYY-MM-DD') : null
+      restValues.booking_end_date = values.booking_end_date ? dayjs(values.booking_end_date).format('YYYY-MM-DD') : null
 
       onSubmit({
         ...restValues,
@@ -570,6 +583,12 @@ export function ProductForm({
           ...initialValues,
           min_participants: initialValues?.min_participants ?? 1,
           is_visible: initialValues?.is_visible ?? true,
+          is_sold_out: initialValues?.is_sold_out ?? false,
+          display_order: initialValues?.display_order ?? 0,
+          booking_cutoff_hours: initialValues?.booking_cutoff_hours ?? 24,
+          allow_same_day_booking: initialValues?.allow_same_day_booking ?? false,
+          booking_start_date: initialValues?.booking_start_date ? dayjs(initialValues.booking_start_date) : null,
+          booking_end_date: initialValues?.booking_end_date ? dayjs(initialValues.booking_end_date) : null,
         }}
         style={{ width: '100%' }}
         className="compact-form"
@@ -591,7 +610,9 @@ export function ProductForm({
           <Form.Item
             name="business_owner_id"
             label="사업주"
-            extra={`사업주별 상품은 최대 ${MAX_PRODUCTS_PER_BUSINESS_OWNER}개까지 등록할 수 있습니다`}
+            extra={selectedVendor
+              ? `${selectedVendor.name} 계정의 사업장을 아래에서 선택하세요.`
+              : '상품을 등록할 사업주 계정을 선택하세요.'}
             rules={[{ required: true, message: '사업주를 선택하세요' }]}
           >
             <Select
@@ -600,7 +621,31 @@ export function ProductForm({
               showSearch
               optionFilterProp="label"
               disabled={isEdit}
-              options={vendors?.map((v) => ({ value: v.id, label: v.name })) || []}
+              onChange={() => form.setFieldValue('business_id', undefined)}
+              options={vendors?.map((v) => ({
+                value: v.id,
+                label: v.name,
+              })) || []}
+            />
+          </Form.Item>
+
+          <Form.Item
+            name="business_id"
+            label="사업장"
+            extra={selectedBusiness
+              ? `현재 ${selectedBusiness.product_count || 0}/${MAX_PRODUCTS_PER_BUSINESS_OWNER}개 등록 · 홈페이지에는 이 사업장명으로 노출됩니다.`
+              : '상품이 실제로 노출될 사업장을 선택하세요.'}
+            rules={[{ required: true, message: '사업장을 선택하세요' }]}
+          >
+            <Select
+              placeholder={selectedBusinessOwnerId ? '사업장 선택' : '사업주를 먼저 선택하세요'}
+              style={{ width: 360 }}
+              disabled={!selectedBusinessOwnerId || isEdit}
+              options={(businesses || []).map((business) => ({
+                value: business.id,
+                label: `${business.name} (${business.product_count || 0}/${MAX_PRODUCTS_PER_BUSINESS_OWNER})`,
+                disabled: !isEdit && (business.product_count || 0) >= MAX_PRODUCTS_PER_BUSINESS_OWNER,
+              }))}
             />
           </Form.Item>
 
@@ -647,6 +692,16 @@ export function ProductForm({
             <Col>
               <Form.Item name="is_visible" label="노출 여부" valuePropName="checked">
                 <Switch checkedChildren="노출" unCheckedChildren="숨김" />
+              </Form.Item>
+            </Col>
+            <Col>
+              <Form.Item name="is_sold_out" label="판매 상태" valuePropName="checked">
+                <Switch checkedChildren="판매 마감" unCheckedChildren="판매 중" />
+              </Form.Item>
+            </Col>
+            <Col>
+              <Form.Item name="display_order" label="노출 순서">
+                <InputNumber min={0} style={{ width: 110 }} />
               </Form.Item>
             </Col>
           </Row>
@@ -731,6 +786,12 @@ export function ProductForm({
           </Row>
 
           <Row gutter={24}>
+            <Col><Form.Item name="minimum_age" label="최소 이용 연령"><InputNumber min={0} style={{ width: 120 }} addonAfter="세" /></Form.Item></Col>
+            <Col><Form.Item name="recommended_age_min" label="권장 연령 시작"><InputNumber min={0} style={{ width: 120 }} addonAfter="세" /></Form.Item></Col>
+            <Col><Form.Item name="recommended_age_max" label="권장 연령 종료" dependencies={['recommended_age_min']} rules={[({ getFieldValue }) => ({ validator(_, value) { const min = getFieldValue('recommended_age_min'); return value == null || min == null || value >= min ? Promise.resolve() : Promise.reject(new Error('권장 최대 연령은 최소 연령 이상이어야 합니다')) } })]}><InputNumber min={0} style={{ width: 120 }} addonAfter="세" /></Form.Item></Col>
+          </Row>
+
+          <Row gutter={24}>
             <Col>
               <Form.Item
                 name="region"
@@ -771,6 +832,16 @@ export function ProductForm({
           <Form.Item name="address_detail" label="상세주소" extra="건물명, 층수, 호수 등을 입력하세요">
             <Input placeholder="예: 3층 301호" style={{ width: 400 }} />
           </Form.Item>
+        </Card>
+
+        <Card style={{ marginBottom: 24 }}>
+          <SectionHeader icon={<CalendarOutlined />} title="예약 정책" description="예약 가능 기간, 마감 시점과 당일 예약 여부를 설정합니다." />
+          <Row gutter={24}>
+            <Col><Form.Item name="booking_start_date" label="예약 시작일"><DatePicker /></Form.Item></Col>
+            <Col><Form.Item name="booking_end_date" label="예약 종료일" dependencies={['booking_start_date']} rules={[({ getFieldValue }) => ({ validator(_, value) { const start = getFieldValue('booking_start_date'); return !value || !start || !dayjs(value).isBefore(dayjs(start), 'day') ? Promise.resolve() : Promise.reject(new Error('예약 종료일은 시작일 이후여야 합니다')) } })]}><DatePicker /></Form.Item></Col>
+            <Col><Form.Item name="booking_cutoff_hours" label="예약 마감"><InputNumber min={0} addonAfter="시간 전" /></Form.Item></Col>
+            <Col><Form.Item name="allow_same_day_booking" label="당일 예약" valuePropName="checked"><Switch checkedChildren="허용" unCheckedChildren="불가" /></Form.Item></Col>
+          </Row>
         </Card>
 
         {/* 이미지 */}
@@ -1319,6 +1390,16 @@ export function ProductForm({
               className="product-description-editor"
             />
           </Form.Item>
+          <Row gutter={16}>
+            <Col span={12}><Form.Item name="inclusions" label="포함 사항"><Input.TextArea rows={3} /></Form.Item></Col>
+            <Col span={12}><Form.Item name="exclusions" label="불포함 사항"><Input.TextArea rows={3} /></Form.Item></Col>
+            <Col span={12}><Form.Item name="materials" label="준비물"><Input.TextArea rows={3} /></Form.Item></Col>
+            <Col span={12}><Form.Item name="usage_method" label="이용 방법"><Input.TextArea rows={3} /></Form.Item></Col>
+            <Col span={12}><Form.Item name="product_precautions" label="상품 유의사항"><Input.TextArea rows={3} /></Form.Item></Col>
+            <Col span={12}><Form.Item name="reservation_notice" label="예약 공지"><Input.TextArea rows={3} /></Form.Item></Col>
+            <Col span={12}><Form.Item name="refund_notice" label="취소·환불 안내"><Input.TextArea rows={3} /></Form.Item></Col>
+            <Col span={12}><Form.Item name="other_notice" label="기타 안내"><Input.TextArea rows={3} /></Form.Item></Col>
+          </Row>
           <style>{`
             .product-description-editor .ql-container {
               min-height: 300px;

@@ -19,6 +19,7 @@ import {
   getAllProducts,
   upsertProductsBulk,
 } from '@/services/productService'
+import { getBusinessesByOwner } from '@/services/businessService'
 import {
   PRODUCT_STATUS_LABEL,
   PRODUCT_STATUS_COLOR,
@@ -51,6 +52,7 @@ export function ProductsPage() {
   const [searchInput, setSearchInput] = useState('')
   const [statusFilter, setStatusFilter] = useState<ProductStatusFilter>('all')
   const [vendorFilter, setVendorFilter] = useState<string | undefined>(undefined)
+  const [businessFilter, setBusinessFilter] = useState<string | undefined>(undefined)
   const [categoryFilter, setCategoryFilter] = useState<string | undefined>(undefined)
 
   // 엑셀 업로드 모달 상태
@@ -65,7 +67,7 @@ export function ProductsPage() {
 
   // 상품 목록 조회
   const { data, isLoading } = useQuery({
-    queryKey: ['products', page, pageSize, search, statusFilter, vendorFilter, categoryFilter],
+    queryKey: ['products', page, pageSize, search, statusFilter, vendorFilter, businessFilter, categoryFilter],
     queryFn: () =>
       getProducts({
         page,
@@ -73,6 +75,7 @@ export function ProductsPage() {
         search,
         status: statusFilter,
         business_owner_id: vendorFilter,
+        business_id: businessFilter,
         category_id: categoryFilter,
       }),
   })
@@ -81,6 +84,11 @@ export function ProductsPage() {
   const { data: vendors } = useQuery({
     queryKey: ['businessOwners'],
     queryFn: getBusinessOwners,
+  })
+  const { data: businesses } = useQuery({
+    queryKey: ['businessesByOwner', vendorFilter],
+    queryFn: () => getBusinessesByOwner(vendorFilter!),
+    enabled: !!vendorFilter,
   })
 
   // 카테고리 목록 조회 (필터용)
@@ -231,20 +239,11 @@ export function ProductsPage() {
       ),
     },
     {
-      title: '사업주',
-      key: 'business_owner',
+      title: '사업장',
+      key: 'business',
       width: 140,
       render: (_, record) => {
-        const owner = record.business_owner as { name: string; status?: string } | undefined
-        if (!owner) return '-'
-        return (
-          <span>
-            {owner.name}
-            {owner.status === 'inactive' && (
-              <Tag color="default" style={{ marginLeft: 4, fontSize: 10 }}>비활성</Tag>
-            )}
-          </span>
-        )
+        return record.business?.name || '-'
       },
     },
     {
@@ -373,6 +372,7 @@ export function ProductsPage() {
           value={vendorFilter || ''}
           onChange={(value) => {
             setVendorFilter(value || undefined)
+            setBusinessFilter(undefined)
             setPage(1)
           }}
           style={{ width: 160 }}
@@ -381,6 +381,16 @@ export function ProductsPage() {
           options={[
             { value: '', label: '전체 사업주' },
             ...(vendors?.map((v) => ({ value: v.id, label: v.name })) || []),
+          ]}
+        />
+        <Select
+          value={businessFilter || ''}
+          onChange={(value) => { setBusinessFilter(value || undefined); setPage(1) }}
+          style={{ width: 180 }}
+          disabled={!vendorFilter}
+          options={[
+            { value: '', label: vendorFilter ? '전체 사업장' : '사업주 먼저 선택' },
+            ...(businesses?.map((business) => ({ value: business.id, label: business.name })) || []),
           ]}
         />
         <Select

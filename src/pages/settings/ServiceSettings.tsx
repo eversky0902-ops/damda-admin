@@ -1,6 +1,6 @@
 import { useEffect } from 'react'
 import { Form, Input, InputNumber, Select, Button, Card, Typography, Spin, message } from 'antd'
-import { SaveOutlined, DollarOutlined, CalendarOutlined, CustomerServiceOutlined } from '@ant-design/icons'
+import { SaveOutlined, DollarOutlined, CalendarOutlined, CustomerServiceOutlined, FileTextOutlined } from '@ant-design/icons'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { getAllSettings, updateSettings, settingsToObject } from '@/services/settingsService'
 import { useAuthStore } from '@/stores/authStore'
@@ -18,6 +18,12 @@ interface SettingsFormValues {
   service_phone: string
   business_hours_start: string
   business_hours_end: string
+  publisher_company_name: string
+  publisher_business_number: string
+  publisher_representative: string
+  publisher_address: string
+  publisher_phone: string
+  publisher_email: string
 }
 
 function SectionHeader({
@@ -59,6 +65,14 @@ export function ServiceSettingsPage() {
   useEffect(() => {
     if (settings) {
       const obj = settingsToObject(settings)
+      const publisher = (obj.document_publisher || {}) as Partial<{
+        company_name: string
+        business_number: string
+        representative: string
+        address: string
+        phone: string
+        email: string
+      }>
       form.setFieldsValue({
         default_commission_rate: obj.default_commission_rate as number,
         commission_rate_min: obj.commission_rate_min as number,
@@ -70,6 +84,12 @@ export function ServiceSettingsPage() {
         service_phone: obj.service_phone as string,
         business_hours_start: (obj.business_hours as { start: string })?.start || '09:00',
         business_hours_end: (obj.business_hours as { end: string })?.end || '18:00',
+        publisher_company_name: publisher.company_name || '담다',
+        publisher_business_number: publisher.business_number || '660-08-02811',
+        publisher_representative: publisher.representative || '이승규',
+        publisher_address: publisher.address || '',
+        publisher_phone: publisher.phone || '',
+        publisher_email: publisher.email || '',
       })
     }
   }, [settings, form])
@@ -89,6 +109,14 @@ export function ServiceSettingsPage() {
         business_hours: {
           start: values.business_hours_start,
           end: values.business_hours_end,
+        },
+        document_publisher: {
+          company_name: values.publisher_company_name,
+          business_number: values.publisher_business_number,
+          representative: values.publisher_representative,
+          address: values.publisher_address,
+          phone: values.publisher_phone,
+          email: values.publisher_email,
         },
       }
       return updateSettings(settingsToUpdate, admin?.id || '')
@@ -254,6 +282,28 @@ export function ServiceSettingsPage() {
             <Form.Item name="business_hours_end" label="운영 종료 시간">
               <Input style={{ width: 120 }} placeholder="18:00" />
             </Form.Item>
+          </div>
+        </Card>
+
+        <Card style={{ marginBottom: 24 }}>
+          <SectionHeader
+            icon={<FileTextOutlined />}
+            title="행정 문서 발행자"
+            description="견적서·대금명세서 등 예약 기반 문서에 표시되며, 문서 발행 시점에 스냅샷으로 보존됩니다."
+          />
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '0 24px' }}>
+            <Form.Item name="publisher_company_name" label="상호명" rules={[{ required: true, message: '상호명을 입력해주세요' }]}>
+              <Input placeholder="담다" />
+            </Form.Item>
+            <Form.Item name="publisher_business_number" label="사업자등록번호" rules={[{ required: true, message: '사업자등록번호를 입력해주세요' }]}>
+              <Input placeholder="660-08-02811" />
+            </Form.Item>
+            <Form.Item name="publisher_representative" label="대표자" rules={[{ required: true, message: '대표자를 입력해주세요' }]}>
+              <Input placeholder="이승규" />
+            </Form.Item>
+            <Form.Item name="publisher_phone" label="연락처"><Input placeholder="010-0000-0000" /></Form.Item>
+            <Form.Item name="publisher_email" label="이메일" rules={[{ type: 'email', message: '올바른 이메일 형식이 아닙니다' }]}><Input placeholder="name@domain.kr" /></Form.Item>
+            <Form.Item name="publisher_address" label="주소"><Input placeholder="발행자 주소" /></Form.Item>
           </div>
         </Card>
 

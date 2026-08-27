@@ -151,7 +151,7 @@ export function VendorForm({
 
   const handleDocumentDelete = async (doc: BusinessOwnerDocument) => {
     try {
-      await deleteVendorDocument(doc.file_url)
+      await deleteVendorDocument(doc.file_url, doc.storage_bucket, doc.storage_path)
       await deleteVendorDocumentRecord(doc.id)
       message.success('파일이 삭제되었습니다')
       await loadDocuments()

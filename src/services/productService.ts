@@ -12,21 +12,25 @@ import type {
   BusinessOwner,
 } from '@/types'
 
+// Generated database types predate the additive businesses migration.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const productDb = supabase as any
+
 export const MAX_PRODUCTS_PER_BUSINESS_OWNER = 10
 export const MAX_PRODUCT_DETAIL_IMAGES = 5
 
-async function ensureBusinessOwnerCanAddProduct(businessOwnerId: string): Promise<void> {
-  const { count, error } = await supabase
+async function ensureBusinessCanAddProduct(businessId: string): Promise<void> {
+  const { count, error } = await productDb
     .from('products')
     .select('id', { count: 'exact', head: true })
-    .eq('business_owner_id', businessOwnerId)
+    .eq('business_id', businessId)
 
   if (error) {
     throw new Error(error.message)
   }
 
   if ((count ?? 0) >= MAX_PRODUCTS_PER_BUSINESS_OWNER) {
-    throw new Error(`사업주별 상품은 최대 ${MAX_PRODUCTS_PER_BUSINESS_OWNER}개까지 등록할 수 있습니다`)
+    throw new Error(`사업장별 상품은 최대 ${MAX_PRODUCTS_PER_BUSINESS_OWNER}개까지 등록할 수 있습니다`)
   }
 }
 
@@ -36,20 +40,36 @@ function ensureProductImageLimit(images?: string[]): void {
   }
 }
 
+function validateProductRules(input: ProductCreateInput | ProductUpdateInput): void {
+  if (input.original_price != null && input.sale_price != null && input.original_price < input.sale_price) {
+    throw new Error('정가는 판매가보다 크거나 같아야 합니다')
+  }
+  if (input.min_participants != null && input.max_participants != null && input.max_participants < input.min_participants) {
+    throw new Error('최대 인원은 최소 인원보다 크거나 같아야 합니다')
+  }
+  if (input.recommended_age_min != null && input.recommended_age_max != null && input.recommended_age_max < input.recommended_age_min) {
+    throw new Error('권장 최대 연령은 최소 연령보다 크거나 같아야 합니다')
+  }
+  if (input.booking_start_date && input.booking_end_date && input.booking_end_date < input.booking_start_date) {
+    throw new Error('예약 종료일은 시작일보다 빠를 수 없습니다')
+  }
+}
+
 // 상품 목록 조회
 export async function getProducts(
   params: PaginationParams & ProductFilter
 ): Promise<{ data: Product[]; total: number }> {
-  const { page, pageSize, status, search, business_owner_id, category_id } = params
+  const { page, pageSize, status, search, business_owner_id, business_id, category_id } = params
   const from = (page - 1) * pageSize
   const to = from + pageSize - 1
 
-  let query = supabase
+  let query = productDb
     .from('products')
     .select(
       `
       *,
       business_owner:business_owners(id, name, status),
+      business:businesses(id, name, business_code),
       category:categories(id, name)
     `,
       { count: 'exact' }
@@ -71,6 +91,8 @@ export async function getProducts(
     query = query.eq('business_owner_id', business_owner_id)
   }
 
+  if (business_id) query = query.eq('business_id', business_id)
+
   // 카테고리 필터
   if (category_id) {
     query = query.eq('category_id', category_id)
@@ -82,7 +104,7 @@ export async function getProducts(
   }
 
   // 정렬 및 페이지네이션
-  query = query.order('created_at', { ascending: false }).range(from, to)
+  query = query.order('display_order', { ascending: true }).order('created_at', { ascending: false }).range(from, to)
 
   const { data, error, count } = await query
 
@@ -127,6 +149,7 @@ export async function getProduct(id: string): Promise<Product> {
     .select('*')
     .eq('product_id', id)
     .order('sort_order', { ascending: true })
+    .limit(5)
 
   // 휴무일 조회
   const { data: unavailableDates } = await supabase
@@ -140,7 +163,7 @@ export async function getProduct(id: string): Promise<Product> {
     options: options || [],
     images: images || [],
     unavailable_dates: unavailableDates || [],
-  } as Product
+  } as unknown as Product
 }
 
 // 상품 생성
@@ -148,10 +171,11 @@ export async function createProduct(input: ProductCreateInput): Promise<Product>
   const { options, images, available_time_slots, unavailable_dates, ...productData } = input
 
   ensureProductImageLimit(images)
-  await ensureBusinessOwnerCanAddProduct(productData.business_owner_id)
+  validateProductRules(input)
+  await ensureBusinessCanAddProduct(productData.business_id)
 
   // 상품 생성
-  const { data: product, error: productError } = await supabase
+  const { data: product, error: productError } = await productDb
     .from('products')
     .insert({
       ...productData,
@@ -236,6 +260,7 @@ export async function updateProduct(id: string, input: ProductUpdateInput): Prom
   const { options, images, available_time_slots, unavailable_dates, ...productData } = input
 
   ensureProductImageLimit(images)
+  validateProductRules(input)
 
   // 변경 전 데이터 조회
   const { data: beforeData } = await supabase
@@ -245,7 +270,7 @@ export async function updateProduct(id: string, input: ProductUpdateInput): Prom
     .single()
 
   // 상품 업데이트
-  const { data: product, error: productError } = await supabase
+  const { data: product, error: productError } = await productDb
     .from('products')
     .update({
       ...productData,
@@ -389,6 +414,7 @@ export async function getProductImages(productId: string): Promise<ProductImage[
     .select('*')
     .eq('product_id', productId)
     .order('sort_order', { ascending: true })
+    .limit(5)
 
   if (error) {
     throw new Error(error.message)
@@ -454,18 +480,32 @@ export async function getCategoriesFlat(): Promise<Category[]> {
 }
 
 // 사업주 목록 조회 (선택 옵션용)
-export async function getBusinessOwners(): Promise<Pick<BusinessOwner, 'id' | 'name' | 'email'>[]> {
-  const { data, error } = await supabase
-    .from('business_owners')
-    .select('id, name, email')
-    .eq('status', 'active')
-    .order('name', { ascending: true })
+export interface BusinessOwnerProductOption extends Pick<BusinessOwner, 'id' | 'name' | 'email'> {
+  product_count: number
+}
 
-  if (error) {
-    throw new Error(error.message)
+export async function getBusinessOwners(): Promise<BusinessOwnerProductOption[]> {
+  const [ownersResult, productsResult] = await Promise.all([
+    supabase
+      .from('business_owners')
+      .select('id, name, email')
+      .eq('status', 'active')
+      .order('name', { ascending: true }),
+    supabase.from('products').select('business_owner_id'),
+  ])
+
+  if (ownersResult.error) throw new Error(ownersResult.error.message)
+  if (productsResult.error) throw new Error(productsResult.error.message)
+
+  const counts = new Map<string, number>()
+  for (const product of productsResult.data || []) {
+    counts.set(product.business_owner_id, (counts.get(product.business_owner_id) || 0) + 1)
   }
 
-  return data || []
+  return (ownersResult.data || []).map((owner) => ({
+    ...owner,
+    product_count: counts.get(owner.id) || 0,
+  }))
 }
 
 // 전체 상품 목록 조회 (엑셀 다운로드용)

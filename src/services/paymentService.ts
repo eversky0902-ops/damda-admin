@@ -8,6 +8,7 @@ import type {
   Reservation,
   PaginationParams,
 } from '@/types'
+import type { TablesUpdate } from '@/types/database'
 
 // 결제 목록 조회를 위한 확장 타입
 export interface PaymentWithDetails extends Payment {
@@ -178,7 +179,7 @@ export async function updatePaymentStatus(
     .eq('id', id)
     .single()
 
-  const updateData: Record<string, unknown> = {
+  const updateData: TablesUpdate<'payments'> = {
     status,
     updated_at: new Date().toISOString(),
   }

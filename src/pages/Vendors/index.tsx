@@ -8,12 +8,13 @@ import {
   ShopOutlined,
   DownloadOutlined,
   UploadOutlined,
+  DeleteOutlined,
 } from '@ant-design/icons'
 import type { ColumnsType, TablePaginationConfig } from 'antd/es/table'
 import type { MenuProps } from 'antd'
 import dayjs from 'dayjs'
 
-import { getVendors, getAllVendors, upsertVendorsBulk } from '@/services/vendorService'
+import { getVendors, getAllVendors, upsertVendorsBulk, deleteVendor } from '@/services/vendorService'
 import { VENDOR_STATUS_LABEL, DEFAULT_PAGE_SIZE, DATE_FORMAT } from '@/constants'
 import { formatPhoneNumber } from '@/utils/format'
 import type { BusinessOwner, VendorStatus, BusinessOwnerCreateInput } from '@/types'
@@ -33,6 +34,8 @@ export function VendorsPage() {
   const [search, setSearch] = useState('')
   const [searchInput, setSearchInput] = useState('')
   const [statusFilter, setStatusFilter] = useState<VendorStatus | 'all'>('all')
+  const [deleteTarget, setDeleteTarget] = useState<BusinessOwner | null>(null)
+  const [deleteConfirmation, setDeleteConfirmation] = useState('')
 
   // 엑셀 업로드 모달 상태
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false)
@@ -69,6 +72,17 @@ export function VendorsPage() {
     },
   })
 
+  const deleteMutation = useMutation({
+    mutationFn: ({ id, name }: { id: string; name: string }) => deleteVendor(id, name),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['vendors'] })
+      setDeleteTarget(null)
+      setDeleteConfirmation('')
+      message.success('사업주가 삭제되었습니다.')
+    },
+    onError: (error: Error) => message.error(error.message),
+  })
+
   // 엑셀 다운로드 (현재 검색 조건)
   const handleDownloadCurrent = () => {
     if (!data?.data || data.data.length === 0) {
@@ -92,7 +106,7 @@ export function VendorsPage() {
       const formatted = formatVendorsForExcel(allVendors)
       downloadExcel(formatted, VENDOR_EXCEL_COLUMNS, '사업주_전체목록')
       message.success({ content: `엑셀 다운로드 완료 (${allVendors.length}건)`, key: 'download' })
-    } catch (error) {
+    } catch {
       message.error({ content: '다운로드 중 오류가 발생했습니다.', key: 'download' })
     }
   }
@@ -226,6 +240,25 @@ export function VendorsPage() {
       width: 120,
       render: (date: string) => dayjs(date).format(DATE_FORMAT),
     },
+    {
+      title: '관리',
+      key: 'actions',
+      width: 80,
+      render: (_, record) => (
+        <Button
+          danger
+          size="small"
+          icon={<DeleteOutlined />}
+          onClick={(event) => {
+            event.stopPropagation()
+            setDeleteTarget(record)
+            setDeleteConfirmation('')
+          }}
+        >
+          삭제
+        </Button>
+      ),
+    },
   ]
 
   return (
@@ -311,6 +344,48 @@ export function VendorsPage() {
           style: { cursor: 'pointer' },
         })}
       />
+
+      <Modal
+        title="사업주 삭제"
+        open={!!deleteTarget}
+        okText="영구 삭제"
+        cancelText="취소"
+        okButtonProps={{
+          danger: true,
+          disabled: deleteConfirmation !== deleteTarget?.name,
+        }}
+        confirmLoading={deleteMutation.isPending}
+        onCancel={() => {
+          setDeleteTarget(null)
+          setDeleteConfirmation('')
+        }}
+        onOk={() => {
+          if (deleteTarget && deleteConfirmation === deleteTarget.name) {
+            deleteMutation.mutate({ id: deleteTarget.id, name: deleteConfirmation })
+          }
+        }}
+      >
+        <Alert
+          type="warning"
+          showIcon
+          message="삭제 후 복구할 수 없습니다."
+          description="상품·예약·정산 데이터가 연결된 사업주는 삭제되지 않습니다. 필요한 경우 상태를 비활성으로 변경하세요."
+          style={{ marginBottom: 16 }}
+        />
+        <Typography.Paragraph>
+          확인을 위해 사업자명 <Typography.Text strong>{deleteTarget?.name}</Typography.Text>을(를) 입력하세요.
+        </Typography.Paragraph>
+        <Input
+          value={deleteConfirmation}
+          onChange={(event) => setDeleteConfirmation(event.target.value)}
+          placeholder={deleteTarget?.name}
+          onPressEnter={() => {
+            if (deleteTarget && deleteConfirmation === deleteTarget.name) {
+              deleteMutation.mutate({ id: deleteTarget.id, name: deleteConfirmation })
+            }
+          }}
+        />
+      </Modal>
 
       {/* 엑셀 업로드 모달 */}
       <Modal

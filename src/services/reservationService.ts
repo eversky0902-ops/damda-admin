@@ -8,6 +8,7 @@ import type {
   Refund,
   PaginationParams,
 } from '@/types'
+import type { TablesUpdate } from '@/types/database'
 
 // 예약 목록 조회
 export async function getReservations(
@@ -122,7 +123,7 @@ export async function updateReservationStatus(
     .eq('id', id)
     .single()
 
-  const updateData: Record<string, unknown> = {
+  const updateData: TablesUpdate<'reservations'> = {
     status,
     updated_at: new Date().toISOString(),
   }

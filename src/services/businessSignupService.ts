@@ -10,7 +10,6 @@ export type BusinessSignupStatus = 'pending' | 'approved' | 'rejected'
 export interface BusinessSignupRequest {
   id: string
   auth_user_id: string
-  owner_code: string | null
   email: string
   business_name: string
   business_number: string
@@ -33,11 +32,11 @@ export async function getBusinessSignupRequests(): Promise<BusinessSignupRequest
   return (data || []) as BusinessSignupRequest[]
 }
 
-export async function getBusinessSignupRequestsByOwnerCode(ownerCode: string): Promise<BusinessSignupRequest[]> {
+export async function getBusinessSignupRequestsByEmail(email: string): Promise<BusinessSignupRequest[]> {
   const { data, error } = await signupSchema
     .from('business_owner_signup_requests')
     .select('*')
-    .eq('owner_code', ownerCode)
+    .ilike('email', email.trim())
     .eq('status', 'pending')
     .order('created_at', { ascending: false })
 
@@ -51,7 +50,12 @@ export async function approveBusinessSignup(requestId: string, businessOwnerId: 
     p_business_owner_id: businessOwnerId,
   })
 
-  if (error) throw new Error(error.message)
+  if (error) {
+    if (error.message.includes('BUSINESS_OWNER_EMAIL_MISMATCH')) {
+      throw new Error('가입 이메일과 선택한 사업주의 이메일이 일치하지 않습니다.')
+    }
+    throw new Error(error.message)
+  }
   if (!data?.success) throw new Error('가입 신청 승인에 실패했습니다.')
 }
 

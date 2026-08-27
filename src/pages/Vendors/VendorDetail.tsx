@@ -40,8 +40,9 @@ import { VENDOR_STATUS_LABEL, DATE_FORMAT, DEFAULT_PAGE_SIZE } from '@/constants
 import type { Settlement, CommissionHistory, SettlementStatus, BusinessOwnerDocument } from '@/types'
 import {
   approveBusinessSignup,
-  getBusinessSignupRequestsByOwnerCode,
+  getBusinessSignupRequestsByEmail,
 } from '@/services/businessSignupService'
+import VendorBusinessesPanel from './VendorBusinessesPanel'
 
 export function VendorDetailPage() {
   const { id } = useParams<{ id: string }>()
@@ -64,9 +65,9 @@ export function VendorDetailPage() {
   })
 
   const { data: matchingRequests = [], isLoading: isMatchingRequestsLoading } = useQuery({
-    queryKey: ['businessSignupRequests', 'ownerCode', vendor?.owner_code],
-    queryFn: () => getBusinessSignupRequestsByOwnerCode(vendor!.owner_code),
-    enabled: !!vendor?.owner_code,
+    queryKey: ['businessSignupRequests', 'email', vendor?.email],
+    queryFn: () => getBusinessSignupRequestsByEmail(vendor!.email),
+    enabled: !!vendor?.email,
   })
 
   // 정산 내역 조회
@@ -266,6 +267,11 @@ export function VendorDetailPage() {
 
   const tabItems = [
     {
+      key: 'businesses',
+      label: '사업장 관리',
+      children: <VendorBusinessesPanel vendor={vendor} />,
+    },
+    {
       key: 'info',
       label: '기본 정보',
       children: (
@@ -330,13 +336,13 @@ export function VendorDetailPage() {
             type="info"
             showIcon
             style={{ marginBottom: 12 }}
-            message={`회원가입 시 사업주 코드 ${vendor.owner_code}를 입력한 계정만 표시됩니다.`}
+            message={`가입 이메일이 ${vendor.email}인 승인 대기 계정만 표시됩니다.`}
           />
           <List
             size="small"
             bordered
             loading={isMatchingRequestsLoading}
-            locale={{ emptyText: '이 코드로 가입 승인 대기 중인 계정이 없습니다.' }}
+            locale={{ emptyText: '같은 이메일로 가입 승인 대기 중인 계정이 없습니다.' }}
             dataSource={matchingRequests}
             renderItem={(request) => (
               <List.Item

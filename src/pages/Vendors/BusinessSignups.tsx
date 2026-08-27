@@ -56,7 +56,7 @@ export function BusinessSignupsPage() {
     const keyword = search.trim().toLowerCase()
     if (!keyword) return requests
     return requests.filter((request) =>
-      [request.email, request.owner_code, request.business_name, request.business_number, request.contact_name]
+      [request.email, request.business_name, request.business_number, request.contact_name]
         .filter((value): value is string => Boolean(value))
         .some((value) => value.toLowerCase().includes(keyword))
     )
@@ -86,7 +86,8 @@ export function BusinessSignupsPage() {
 
   const openMatching = (request: BusinessSignupRequest) => {
     setSelectedRequest(request)
-    const exactMatch = vendors.find((vendor) => vendor.owner_code === request.owner_code)
+    const requestEmail = request.email.trim().toLowerCase()
+    const exactMatch = vendors.find((vendor) => vendor.email.trim().toLowerCase() === requestEmail)
     setSelectedVendorId(exactMatch?.id)
   }
 
@@ -98,12 +99,6 @@ export function BusinessSignupsPage() {
       render: (value: string) => dayjs(value).format('YYYY-MM-DD'),
     },
     { title: '사업자명', dataIndex: 'business_name' },
-    {
-      title: '사업주 코드',
-      dataIndex: 'owner_code',
-      width: 145,
-      render: (value: string | null) => value ? <Typography.Text code copyable>{value}</Typography.Text> : '-',
-    },
     { title: '사업자등록번호', dataIndex: 'business_number', width: 150 },
     { title: '대표자', dataIndex: 'representative', width: 100 },
     { title: '이메일', dataIndex: 'email' },
@@ -171,7 +166,8 @@ export function BusinessSignupsPage() {
         cancelText="취소"
         confirmLoading={approveMutation.isPending}
         okButtonProps={{
-          disabled: !selectedVendorId || selectedVendor?.owner_code !== selectedRequest?.owner_code,
+          disabled: !selectedVendorId
+            || selectedVendor?.email.trim().toLowerCase() !== selectedRequest?.email.trim().toLowerCase(),
         }}
         onCancel={() => {
           setSelectedRequest(null)
@@ -187,11 +183,6 @@ export function BusinessSignupsPage() {
           <>
             <Descriptions size="small" column={1} bordered style={{ marginBottom: 16 }}>
               <Descriptions.Item label="가입 이메일">{selectedRequest.email}</Descriptions.Item>
-              <Descriptions.Item label="사업주 코드">
-                {selectedRequest.owner_code
-                  ? <Typography.Text code copyable>{selectedRequest.owner_code}</Typography.Text>
-                  : '-'}
-              </Descriptions.Item>
               <Descriptions.Item label="신청 사업자">{selectedRequest.business_name}</Descriptions.Item>
               <Descriptions.Item label="사업자등록번호">{selectedRequest.business_number}</Descriptions.Item>
             </Descriptions>
@@ -206,14 +197,16 @@ export function BusinessSignupsPage() {
               style={{ width: '100%', marginTop: 8 }}
               options={vendors.map((vendor: BusinessOwner) => ({
                 value: vendor.id,
-                label: `${vendor.name} · ${vendor.owner_code} · ${vendor.business_number}`,
+                label: `${vendor.name} · ${vendor.owner_code} · ${vendor.email} · ${vendor.business_number}`,
               }))}
             />
-            {selectedVendor && selectedVendor.owner_code !== selectedRequest.owner_code && (
+            {selectedVendor
+              && selectedVendor.email.trim().toLowerCase() !== selectedRequest.email.trim().toLowerCase()
+              && (
               <Alert
                 type="warning"
                 showIcon
-                message="가입 신청의 사업주 코드와 선택한 사업주의 코드가 다릅니다. 연결할 수 없습니다."
+                message="가입 이메일과 선택한 사업주의 이메일이 다릅니다. 연결할 수 없습니다."
                 style={{ marginTop: 12 }}
               />
             )}

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Outlet, useNavigate, useLocation } from 'react-router-dom'
-import { Layout, Menu, theme, Avatar, Dropdown, Modal, Form, Input, message, type MenuProps } from 'antd'
+import { Layout, Menu, theme, Avatar, Dropdown, Modal, Form, Input, message, Drawer, Grid, Button, type MenuProps } from 'antd'
 import {
   DashboardOutlined,
   ShopOutlined,
@@ -18,6 +18,8 @@ import {
   LockOutlined,
   FormOutlined,
   UserAddOutlined,
+  FileDoneOutlined,
+  MenuOutlined,
 } from '@ant-design/icons'
 import { useUIStore } from '@/stores/uiStore'
 import { useAuthStore } from '@/stores/authStore'
@@ -41,14 +43,13 @@ const menuItems: MenuProps['items'] = [
     label: '대시보드',
   },
   {
-    key: '/vendors',
+    key: 'business-owners',
     icon: <ShopOutlined />,
     label: '사업주 관리',
-  },
-  {
-    key: '/business-signups',
-    icon: <UserAddOutlined />,
-    label: '사업주 가입 승인',
+    children: [
+      { key: '/vendors', icon: <ShopOutlined />, label: '사업주 목록' },
+      { key: '/business-signups', icon: <UserAddOutlined />, label: '사업주 가입 승인' },
+    ],
   },
   {
     key: '/members',
@@ -120,6 +121,11 @@ const menuItems: MenuProps['items'] = [
       { key: '/settings/logs', label: '활동 로그' },
     ],
   },
+  {
+    key: '/partner-onboardings',
+    icon: <FileDoneOutlined />,
+    label: '입점요청(영업 전용)',
+  },
 ]
 
 // 현재 경로에 맞는 메뉴 키 찾기
@@ -156,11 +162,14 @@ export function AdminLayout() {
   const { sidebarCollapsed } = useUIStore()
   const { admin, isAuthenticated, isSessionValid, logout } = useAuthStore()
   const [passwordModalOpen, setPasswordModalOpen] = useState(false)
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [passwordChanging, setPasswordChanging] = useState(false)
   const [passwordForm] = Form.useForm<PasswordChangeFormValues>()
   const {
     token: { borderRadiusLG },
   } = theme.useToken()
+  const screens = Grid.useBreakpoint()
+  const isMobile = !screens.md
 
   // 현재 경로에 맞는 선택된 메뉴 키
   const selectedKey = getSelectedMenuKey(location.pathname)
@@ -175,6 +184,7 @@ export function AdminLayout() {
 
   const handleMenuClick: MenuProps['onClick'] = ({ key }) => {
     navigate(key)
+    setMobileMenuOpen(false)
   }
 
   const userMenuItems: MenuProps['items'] = [
@@ -248,7 +258,7 @@ export function AdminLayout() {
 
   return (
     <Layout style={{ minHeight: '100vh' }}>
-      <Sider
+      {!isMobile && <Sider
         trigger={null}
         collapsible
         collapsed={sidebarCollapsed}
@@ -289,7 +299,7 @@ export function AdminLayout() {
               mode="inline"
               theme="dark"
               selectedKeys={[selectedKey]}
-              defaultOpenKeys={['/content']}
+              defaultOpenKeys={['business-owners', '/content']}
               items={menuItems}
               onClick={handleMenuClick}
               style={{ borderRight: 0 }}
@@ -328,13 +338,37 @@ export function AdminLayout() {
             </Dropdown>
           </div>
         </div>
-      </Sider>
-      <Layout style={{ marginLeft: sidebarCollapsed ? 80 : 200, transition: 'all 0.2s', background: '#f5f5f5' }}>
+      </Sider>}
+      <Drawer
+        title={<img src="/logo.svg" alt="담다" style={{ height: 32 }} />}
+        placement="left"
+        width={280}
+        open={isMobile && mobileMenuOpen}
+        onClose={() => setMobileMenuOpen(false)}
+        styles={{ body: { padding: 0, background: '#001529' } }}
+      >
+        <Menu
+          mode="inline"
+          theme="dark"
+          selectedKeys={[selectedKey]}
+          defaultOpenKeys={['business-owners', '/content']}
+          items={menuItems}
+          onClick={handleMenuClick}
+          style={{ borderRight: 0, minHeight: '100%' }}
+        />
+      </Drawer>
+      <Layout style={{ marginLeft: isMobile ? 0 : (sidebarCollapsed ? 80 : 200), transition: 'all 0.2s', background: '#f5f5f5' }}>
+        {isMobile && (
+          <div style={{ height: 56, display: 'flex', alignItems: 'center', gap: 12, padding: '0 12px', background: '#001529', position: 'sticky', top: 0, zIndex: 50 }}>
+            <Button type="text" icon={<MenuOutlined style={{ color: '#fff', fontSize: 20 }} />} onClick={() => setMobileMenuOpen(true)} />
+            <img src="/logo-white.svg" alt="담다" style={{ height: 28 }} />
+          </div>
+        )}
         <Content
           style={{
-            margin: 16,
-            padding: 16,
-            minHeight: 'calc(100vh - 32px)',
+            margin: isMobile ? 8 : 16,
+            padding: isMobile ? 12 : 16,
+            minHeight: isMobile ? 'calc(100vh - 72px)' : 'calc(100vh - 32px)',
             background: '#fff',
             borderRadius: borderRadiusLG,
             boxShadow: '0 1px 2px rgba(0, 0, 0, 0.03)',

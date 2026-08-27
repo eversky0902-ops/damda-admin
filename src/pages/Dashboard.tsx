@@ -416,7 +416,7 @@ export function DashboardPage() {
                       <Cell key={`cell-${index}`} fill={entry.color} />
                     ))}
                   </Pie>
-                  <Tooltip formatter={(value: number | undefined) => [`${value || 0}건`, '']} />
+                  <Tooltip formatter={(value) => [`${Number(value ?? 0)}건`, '']} />
                   <Legend
                     layout="horizontal"
                     verticalAlign="bottom"
@@ -453,7 +453,7 @@ export function DashboardPage() {
                 <CartesianGrid strokeDasharray="3 3" vertical={false} />
                 <XAxis dataKey="day" tick={{ fontSize: 11 }} />
                 <YAxis tick={{ fontSize: 11 }} />
-                <Tooltip formatter={(value: number | undefined) => [`${value || 0}건`, '예약']} />
+                <Tooltip formatter={(value) => [`${Number(value ?? 0)}건`, '예약']} />
                 <Bar dataKey="count" fill="#52c41a" radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>

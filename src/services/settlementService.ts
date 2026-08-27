@@ -2,6 +2,7 @@ import dayjs from 'dayjs'
 
 import { supabase } from '@/lib/supabase'
 import type { Settlement, SettlementStatus, PaginationParams } from '@/types'
+import type { TablesUpdate } from '@/types/database'
 
 export interface SettlementFilter {
   status?: SettlementStatus | 'all'
@@ -163,7 +164,7 @@ export async function createSettlement(input: SettlementCreateInput): Promise<Se
 // 정산 수정
 export async function updateSettlement(id: string, input: SettlementUpdateInput): Promise<Settlement> {
   // 수정 데이터 준비
-  const updateData: Record<string, unknown> = { ...input }
+  const updateData: TablesUpdate<'settlements'> = { ...input }
 
   // 매출이나 수수료율이 변경되면 금액 재계산
   if (input.total_sales !== undefined || input.commission_rate !== undefined) {

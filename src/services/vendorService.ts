@@ -1,5 +1,5 @@
 import { supabase } from '@/lib/supabase'
-import { logCreate, logUpdate } from '@/services/adminLogService'
+import { logCreate, logUpdate, logDelete } from '@/services/adminLogService'
 import type {
   BusinessOwner,
   BusinessOwnerCreateInput,
@@ -146,6 +146,36 @@ export async function updateVendorStatus(
   status: 'active' | 'inactive'
 ): Promise<BusinessOwner> {
   return updateVendor(id, { status })
+}
+
+export async function deleteVendor(id: string, confirmationName: string): Promise<void> {
+  const vendor = await getVendor(id)
+
+  // The guarded deletion RPC is introduced by the product-limit migration.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data, error } = await (supabase as any).rpc('delete_business_owner_safely', {
+    p_business_owner_id: id,
+    p_confirmation_name: confirmationName,
+  })
+
+  if (error) {
+    if (error.message.includes('BUSINESS_OWNER_HAS_RELATED_DATA')) {
+      throw new Error('상품·예약·정산 데이터가 연결되어 있어 삭제할 수 없습니다. 연결 데이터를 먼저 확인해주세요.')
+    }
+    if (error.message.includes('CONFIRMATION_NAME_MISMATCH')) {
+      throw new Error('입력한 사업자명이 일치하지 않습니다.')
+    }
+    throw new Error(error.message)
+  }
+  if (!data?.success) throw new Error('사업주 삭제에 실패했습니다.')
+
+  try {
+    await logDelete('business_owner', id, vendor as unknown as Record<string, unknown>)
+  } catch (logError) {
+    // The vendor is already deleted at this point. Do not report a false failure
+    // when only the secondary audit-log write fails.
+    console.error('Failed to write the vendor deletion audit log:', logError)
+  }
 }
 
 // 정산 내역 조회
@@ -335,7 +365,14 @@ export async function getVendorDocuments(vendorId: string): Promise<BusinessOwne
     throw new Error(error.message)
   }
 
-  return (data as BusinessOwnerDocument[]) || []
+  const documents = (data as BusinessOwnerDocument[]) || []
+  return Promise.all(documents.map(async (document) => {
+    if (!document.storage_bucket || !document.storage_path) return document
+    const { data: signed } = await supabase.storage
+      .from(document.storage_bucket)
+      .createSignedUrl(document.storage_path, 3600)
+    return { ...document, file_url: signed?.signedUrl || document.file_url }
+  }))
 }
 
 // 사업주 문서 추가

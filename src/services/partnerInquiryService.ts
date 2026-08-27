@@ -6,6 +6,7 @@ import type {
   PartnerInquiryFilter,
   PaginationParams,
 } from '@/types'
+import type { TablesUpdate } from '@/types/database'
 
 // 입점문의 목록 조회
 export async function getPartnerInquiries(
@@ -79,7 +80,7 @@ export async function updatePartnerInquiryStatus(
     .eq('id', id)
     .single()
 
-  const updateData: Record<string, unknown> = {
+  const updateData: TablesUpdate<'partner_inquiries'> = {
     status: 'approved',
     reviewed_by: reviewedBy,
     reviewed_at: new Date().toISOString(),
@@ -114,7 +115,7 @@ export async function updatePartnerInquiryMemo(
 ): Promise<void> {
   const { error } = await supabase
     .from('partner_inquiries')
-    .update({ memo } as Record<string, unknown>)
+    .update({ memo })
     .eq('id', id)
 
   if (error) {
@@ -171,7 +172,7 @@ export async function bulkUpdatePartnerInquiryStatus(
       .eq('id', id)
       .single()
 
-    const updateData: Record<string, unknown> = {
+    const updateData: TablesUpdate<'partner_inquiries'> = {
       status,
       reviewed_by: reviewedBy,
       reviewed_at: new Date().toISOString(),
