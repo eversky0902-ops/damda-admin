@@ -25,20 +25,22 @@ export interface BusinessInput {
   latitude?: number | null
   longitude?: number | null
   directions?: string
+  reservation_notice?: string
   status?: 'active' | 'inactive'
 }
 
 export async function getBusinessesByOwner(ownerId: string): Promise<Business[]> {
   const { data, error } = await businessDb.from('businesses')
-    .select('*, products(count), business_place_profiles(directions)')
+    .select('*, products(count), business_place_profiles(directions, reservation_notice)')
     .eq('business_owner_id', ownerId)
     .order('is_primary', { ascending: false })
     .order('created_at', { ascending: true })
   if (error) throw new Error(error.message)
-  return (data || []).map((row: Business & { products?: Array<{ count: number }>; business_place_profiles?: { directions?: string | null } | null }) => ({
+  return (data || []).map((row: Business & { products?: Array<{ count: number }>; business_place_profiles?: { directions?: string | null; reservation_notice?: string | null } | null }) => ({
     ...row,
     product_count: row.products?.[0]?.count || 0,
     directions: row.business_place_profiles?.directions ?? null,
+    reservation_notice: row.business_place_profiles?.reservation_notice ?? null,
   }))
 }
 
@@ -76,7 +78,11 @@ export async function createBusiness(ownerId: string, input: BusinessInput): Pro
     is_primary: false,
   }).select('*').single()
   if (error) throw new Error(error.message)
-  const profileResult = await businessDb.from('business_place_profiles').upsert({ business_id: data.id, directions: input.directions?.trim() || null }, { onConflict: 'business_id' })
+  const profileResult = await businessDb.from('business_place_profiles').upsert({
+    business_id: data.id,
+    directions: input.directions?.trim() || null,
+    reservation_notice: input.reservation_notice?.trim() || null,
+  }, { onConflict: 'business_id' })
   if (profileResult.error) throw new Error(profileResult.error.message)
   return data as Business
 }
@@ -95,7 +101,11 @@ export async function updateBusiness(id: string, ownerId: string, input: Busines
     latitude: input.latitude ?? null, longitude: input.longitude ?? null,
   }).eq('id', id).eq('business_owner_id', ownerId)
   if (error) throw new Error(error.message)
-  const profileResult = await businessDb.from('business_place_profiles').upsert({ business_id: id, directions: input.directions?.trim() || null }, { onConflict: 'business_id' })
+  const profileResult = await businessDb.from('business_place_profiles').upsert({
+    business_id: id,
+    directions: input.directions?.trim() || null,
+    reservation_notice: input.reservation_notice?.trim() || null,
+  }, { onConflict: 'business_id' })
   if (profileResult.error) throw new Error(profileResult.error.message)
 }
 

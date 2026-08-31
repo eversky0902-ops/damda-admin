@@ -104,6 +104,7 @@ export interface Business {
   common_guide: string | null
   common_precautions: string | null
   directions?: string | null
+  reservation_notice?: string | null
   status: VendorStatus
   is_primary: boolean
   created_at: string
@@ -345,6 +346,7 @@ export interface Product {
   reservation_notice?: string | null
   refund_notice?: string | null
   other_notice?: string | null
+  facility_services?: Record<string, boolean> | null
   display_order?: number
   address: string | null
   address_detail: string | null
@@ -442,6 +444,7 @@ export interface ProductCreateInput {
   reservation_notice?: string | null
   refund_notice?: string | null
   other_notice?: string | null
+  facility_services?: Record<string, boolean>
   display_order?: number
   address?: string
   address_detail?: string
@@ -482,6 +485,7 @@ export interface ProductUpdateInput {
   reservation_notice?: string | null
   refund_notice?: string | null
   other_notice?: string | null
+  facility_services?: Record<string, boolean>
   display_order?: number
   address?: string | null
   address_detail?: string | null

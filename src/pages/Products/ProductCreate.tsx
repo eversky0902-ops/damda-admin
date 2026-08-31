@@ -1,4 +1,4 @@
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { Typography, message } from 'antd'
 
@@ -10,7 +10,10 @@ const { Text } = Typography
 
 export function ProductCreatePage() {
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
   const queryClient = useQueryClient()
+  const initialBusinessOwnerId = searchParams.get('business_owner_id') || undefined
+  const initialBusinessId = searchParams.get('business_id') || undefined
 
   const mutation = useMutation({
     mutationFn: (input: ProductCreateInput) => createProduct(input),
@@ -37,6 +40,10 @@ export function ProductCreatePage() {
 
       <ProductForm
         mode="create"
+        initialValues={{
+          business_owner_id: initialBusinessOwnerId,
+          business_id: initialBusinessId,
+        }}
         onSubmit={handleSubmit}
         onCancel={() => navigate('/products')}
         isSubmitting={mutation.isPending}

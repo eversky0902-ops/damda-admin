@@ -18,6 +18,7 @@ import {
   ArrowLeftOutlined,
   EditOutlined,
   DeleteOutlined,
+  PlusOutlined,
 } from '@ant-design/icons'
 import type { ColumnsType } from 'antd/es/table'
 import dayjs from 'dayjs'
@@ -162,6 +163,9 @@ export function ProductDetailPage() {
         <>
           <div style={{ marginBottom: 12, textAlign: 'right' }}>
             <Space>
+              <Button icon={<PlusOutlined />} onClick={() => navigate(`/products/new?business_owner_id=${encodeURIComponent(product.business_owner_id)}${product.business_id ? `&business_id=${encodeURIComponent(product.business_id)}` : ''}`)}>
+                상품 추가
+              </Button>
               <Button icon={<EditOutlined />} onClick={() => navigate(`/products/${id}/edit`)}>
                 수정
               </Button>

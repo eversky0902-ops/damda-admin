@@ -136,7 +136,7 @@ export function ProductsPage() {
       const formatted = formatProductsForExcel(allProducts)
       downloadExcel(formatted, PRODUCT_EXCEL_COLUMNS, '상품_전체목록')
       message.success({ content: `엑셀 다운로드 완료 (${allProducts.length}건)`, key: 'download' })
-    } catch (error) {
+    } catch {
       message.error({ content: '다운로드 중 오류가 발생했습니다.', key: 'download' })
     }
   }
@@ -310,7 +310,7 @@ export function ProductsPage() {
   return (
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 16 }}>
-        <h2 style={{ margin: 0 }}>업체 관리</h2>
+        <h2 style={{ margin: 0 }}>상품 관리</h2>
         <div style={{ display: 'flex', gap: 8 }}>
           <Dropdown menu={{ items: downloadMenuItems }} placement="bottomRight">
             <Button icon={<DownloadOutlined />}>엑셀 다운로드</Button>

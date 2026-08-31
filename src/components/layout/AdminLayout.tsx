@@ -64,7 +64,7 @@ const menuItems: MenuProps['items'] = [
   {
     key: '/products',
     icon: <ShoppingOutlined />,
-    label: '업체 관리',
+    label: '상품 관리',
   },
   {
     key: '/categories',

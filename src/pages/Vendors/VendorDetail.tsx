@@ -43,6 +43,7 @@ import {
   getBusinessSignupRequestsByEmail,
 } from '@/services/businessSignupService'
 import VendorBusinessesPanel from './VendorBusinessesPanel'
+import VendorProductsPanel from './VendorProductsPanel'
 
 export function VendorDetailPage() {
   const { id } = useParams<{ id: string }>()
@@ -53,6 +54,8 @@ export function VendorDetailPage() {
   const [isCommissionModalOpen, setIsCommissionModalOpen] = useState(false)
   const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false)
   const [settlementPage, setSettlementPage] = useState(1)
+  const [activeTab, setActiveTab] = useState('businesses')
+  const [preferredBusinessId, setPreferredBusinessId] = useState<string | undefined>()
 
   const [commissionForm] = Form.useForm()
   const [passwordForm] = Form.useForm()
@@ -269,7 +272,19 @@ export function VendorDetailPage() {
     {
       key: 'businesses',
       label: '사업장 관리',
-      children: <VendorBusinessesPanel vendor={vendor} />,
+      children: <VendorBusinessesPanel vendor={vendor} onManageProducts={(businessId) => {
+        setPreferredBusinessId(businessId)
+        setActiveTab('products')
+      }} />,
+    },
+    {
+      key: 'products',
+      label: '상품 관리',
+      children: <VendorProductsPanel
+        vendor={vendor}
+        preferredBusinessId={preferredBusinessId}
+        onBusinessChange={setPreferredBusinessId}
+      />,
     },
     {
       key: 'info',
@@ -458,7 +473,7 @@ export function VendorDetailPage() {
         <h2 style={{ margin: 0 }}>{vendor.name}</h2>
       </div>
 
-      <Tabs items={tabItems} />
+      <Tabs activeKey={activeTab} onChange={setActiveTab} items={tabItems} />
 
       <Divider />
 

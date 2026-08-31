@@ -35,6 +35,15 @@ import {
   ClockCircleOutlined,
   UnorderedListOutlined,
   CalendarOutlined,
+  CarOutlined,
+  CloudOutlined,
+  CoffeeOutlined,
+  DashboardOutlined,
+  ExperimentOutlined,
+  HomeOutlined,
+  RestOutlined,
+  SkinOutlined,
+  SmileOutlined,
 } from '@ant-design/icons'
 import { DaumPostcodeEmbed, type Address } from 'react-daum-postcode'
 import type { UploadProps } from 'antd/es/upload'
@@ -54,10 +63,25 @@ import type { Product, TimeSlot, TimeSlotMode, TimeSlotInterval, Category } from
 
 const { Text } = Typography
 
+const FACILITY_SERVICE_OPTIONS = [
+  { code: 'large_bus_parking', label: '대형버스 주차 가능', icon: <CarOutlined /> },
+  { code: 'lunchbox_allowed', label: '도시락 지참', icon: <CoffeeOutlined /> },
+  { code: 'meal_space', label: '식사 공간', icon: <RestOutlined /> },
+  { code: 'restroom', label: '화장실', icon: <HomeOutlined /> },
+  { code: 'indoor_waiting_area', label: '실내 대기실', icon: <DashboardOutlined /> },
+  { code: 'operates_in_rain', label: '우천 시 진행', icon: <CloudOutlined /> },
+  { code: 'nursing_room', label: '수유실', icon: <SmileOutlined /> },
+  { code: 'diaper_changing_station', label: '기저귀 교환대', icon: <SkinOutlined /> },
+  { code: 'passenger_car_parking', label: '승용차 주차', icon: <CarOutlined /> },
+  { code: 'toddler_lounge', label: '유아 휴게실', icon: <SmileOutlined /> },
+  { code: 'drinking_water', label: '식수대', icon: <CoffeeOutlined /> },
+  { code: 'outdoor_activity_area', label: '야외 활동장', icon: <ExperimentOutlined /> },
+] as const
+
 const quillFormats = [
   'header',
   'bold', 'italic', 'underline', 'strike',
-  'list', 'bullet', 'indent',
+  'list', 'indent',
   'color', 'background',
   'align',
   'link',
@@ -502,6 +526,11 @@ export function ProductForm({
       // category_path는 제외하고 category_id 추가
       const restValues = { ...values }
       delete restValues.category_path
+      const selectedFacilityCodes = (values.facility_service_codes as string[] | undefined) ?? []
+      delete restValues.facility_service_codes
+      restValues.facility_services = Object.fromEntries(
+        FACILITY_SERVICE_OPTIONS.map(({ code }) => [code, selectedFacilityCodes.includes(code)])
+      )
       restValues.booking_start_date = values.booking_start_date ? dayjs(values.booking_start_date).format('YYYY-MM-DD') : null
       restValues.booking_end_date = values.booking_end_date ? dayjs(values.booking_end_date).format('YYYY-MM-DD') : null
 
@@ -587,6 +616,9 @@ export function ProductForm({
           display_order: initialValues?.display_order ?? 0,
           booking_cutoff_hours: initialValues?.booking_cutoff_hours ?? 24,
           allow_same_day_booking: initialValues?.allow_same_day_booking ?? false,
+          facility_service_codes: Object.entries(initialValues?.facility_services ?? {})
+            .filter(([, available]) => available)
+            .map(([code]) => code),
           booking_start_date: initialValues?.booking_start_date ? dayjs(initialValues.booking_start_date) : null,
           booking_end_date: initialValues?.booking_end_date ? dayjs(initialValues.booking_end_date) : null,
         }}
@@ -631,14 +663,14 @@ export function ProductForm({
 
           <Form.Item
             name="business_id"
-            label="사업장"
+            label="상품"
             extra={selectedBusiness
               ? `현재 ${selectedBusiness.product_count || 0}/${MAX_PRODUCTS_PER_BUSINESS_OWNER}개 등록 · 홈페이지에는 이 사업장명으로 노출됩니다.`
               : '상품이 실제로 노출될 사업장을 선택하세요.'}
-            rules={[{ required: true, message: '사업장을 선택하세요' }]}
+            rules={[{ required: true, message: '상품을 선택하세요' }]}
           >
             <Select
-              placeholder={selectedBusinessOwnerId ? '사업장 선택' : '사업주를 먼저 선택하세요'}
+              placeholder={selectedBusinessOwnerId ? '상품 선택' : '사업주를 먼저 선택하세요'}
               style={{ width: 360 }}
               disabled={!selectedBusinessOwnerId || isEdit}
               options={(businesses || []).map((business) => ({
@@ -842,6 +874,26 @@ export function ProductForm({
             <Col><Form.Item name="booking_cutoff_hours" label="예약 마감"><InputNumber min={0} addonAfter="시간 전" /></Form.Item></Col>
             <Col><Form.Item name="allow_same_day_booking" label="당일 예약" valuePropName="checked"><Switch checkedChildren="허용" unCheckedChildren="불가" /></Form.Item></Col>
           </Row>
+        </Card>
+
+        <Card style={{ marginBottom: 24 }}>
+          <SectionHeader icon={<HomeOutlined />} title="시설·서비스" description="체크 시 사용자 화면에 ‘가능’, 미체크 시 ‘불가’로 표시됩니다. 상품별 실제 제공 여부를 설정하세요." />
+          <Form.Item name="facility_service_codes" style={{ marginBottom: 0 }}>
+            <Checkbox.Group style={{ width: '100%' }}>
+              <Row gutter={[12, 12]}>
+                {FACILITY_SERVICE_OPTIONS.map((option) => (
+                  <Col xs={24} sm={12} lg={8} key={option.code}>
+                    <Checkbox value={option.code} style={{ width: '100%', margin: 0 }}>
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, minHeight: 32 }}>
+                        <span style={{ color: '#1677ff', fontSize: 16 }}>{option.icon}</span>
+                        <span>{option.label}</span>
+                      </span>
+                    </Checkbox>
+                  </Col>
+                ))}
+              </Row>
+            </Checkbox.Group>
+          </Form.Item>
         </Card>
 
         {/* 이미지 */}
