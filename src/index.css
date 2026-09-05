@@ -60,3 +60,15 @@ body {
 .single-calendar-range .ant-picker-panels > *:first-child .ant-picker-header-next-btn {
   visibility: visible !important;
 }
+
+/* 사업주 목록: 페이지와 데이터 수에 관계없이 동일한 셀 간격과 한 줄 표시 유지 */
+.vendor-list-table .ant-table-thead > tr > th,
+.vendor-list-table .ant-table-tbody > tr > td {
+  padding: 10px 14px !important;
+  white-space: nowrap;
+  vertical-align: middle;
+}
+
+.vendor-list-table .ant-table-cell > * {
+  white-space: nowrap;
+}

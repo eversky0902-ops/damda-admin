@@ -60,6 +60,8 @@ export interface BusinessOwner {
   owner_code: string
   email: string
   name: string
+  legal_name?: string | null
+  primary_business_name?: string | null
   business_number: string
   representative: string
   contact_name: string
@@ -85,6 +87,7 @@ export interface Business {
   business_owner_id: string
   business_code: string
   name: string
+  legal_name?: string | null
   business_number: string | null
   representative: string | null
   contact_name: string | null
@@ -117,6 +120,8 @@ export interface BusinessOwnerCreateInput {
   email: string
   password: string
   name: string
+  business_name?: string
+  legal_name?: string
   business_number: string
   representative: string
   contact_name: string
@@ -135,6 +140,8 @@ export interface BusinessOwnerCreateInput {
 // 사업주 수정 입력
 export interface BusinessOwnerUpdateInput {
   name?: string
+  business_name?: string
+  legal_name?: string
   representative?: string
   contact_name?: string
   contact_phone?: string

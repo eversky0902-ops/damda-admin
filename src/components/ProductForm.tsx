@@ -1442,16 +1442,6 @@ export function ProductForm({
               className="product-description-editor"
             />
           </Form.Item>
-          <Row gutter={16}>
-            <Col span={12}><Form.Item name="inclusions" label="포함 사항"><Input.TextArea rows={3} /></Form.Item></Col>
-            <Col span={12}><Form.Item name="exclusions" label="불포함 사항"><Input.TextArea rows={3} /></Form.Item></Col>
-            <Col span={12}><Form.Item name="materials" label="준비물"><Input.TextArea rows={3} /></Form.Item></Col>
-            <Col span={12}><Form.Item name="usage_method" label="이용 방법"><Input.TextArea rows={3} /></Form.Item></Col>
-            <Col span={12}><Form.Item name="product_precautions" label="상품 유의사항"><Input.TextArea rows={3} /></Form.Item></Col>
-            <Col span={12}><Form.Item name="reservation_notice" label="예약 공지"><Input.TextArea rows={3} /></Form.Item></Col>
-            <Col span={12}><Form.Item name="refund_notice" label="취소·환불 안내"><Input.TextArea rows={3} /></Form.Item></Col>
-            <Col span={12}><Form.Item name="other_notice" label="기타 안내"><Input.TextArea rows={3} /></Form.Item></Col>
-          </Row>
           <style>{`
             .product-description-editor .ql-container {
               min-height: 300px;

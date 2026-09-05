@@ -12,6 +12,21 @@ import type {
   BusinessOwnerDocumentCreateInput,
 } from '@/types'
 
+// Generated database types predate the legal-name and businesses relationship additions.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const vendorDb = supabase as any
+
+type VendorWithBusinesses = BusinessOwner & {
+  businesses?: Array<{ name: string; is_primary: boolean }>
+}
+
+function mapVendor(row: VendorWithBusinesses): BusinessOwner {
+  return {
+    ...row,
+    primary_business_name: row.businesses?.find((business) => business.is_primary)?.name || null,
+  }
+}
+
 // 사업주 목록 조회
 export async function getVendors(
   params: PaginationParams & VendorFilter
@@ -20,18 +35,37 @@ export async function getVendors(
   const from = (page - 1) * pageSize
   const to = from + pageSize - 1
 
-  let query = supabase
+  let query = vendorDb
     .from('business_owners')
-    .select('*', { count: 'exact' })
+    .select('*, businesses(name, is_primary)', { count: 'exact' })
 
   // 상태 필터
   if (status && status !== 'all') {
     query = query.eq('status', status)
   }
 
-  // 검색 (사업자명, 사업자번호)
+  // 검색 (상호명, 실제 운영 사업자명, 기존 사업주명, 사업자번호)
   if (search) {
-    query = query.or(`name.ilike.%${search}%,business_number.ilike.%${search}%,owner_code.ilike.%${search}%`)
+    const { data: matchedBusinesses, error: businessSearchError } = await vendorDb
+      .from('businesses')
+      .select('business_owner_id')
+      .eq('is_primary', true)
+      .ilike('name', `%${search}%`)
+    if (businessSearchError) throw new Error(businessSearchError.message)
+
+    const matchedOwnerIds = Array.from(new Set(
+      (matchedBusinesses || []).map((business: { business_owner_id: string }) => business.business_owner_id)
+    ))
+    const filters = [
+      `legal_name.ilike.%${search}%`,
+      `name.ilike.%${search}%`,
+      `business_number.ilike.%${search}%`,
+      `owner_code.ilike.%${search}%`,
+    ]
+    if (matchedOwnerIds.length > 0) {
+      filters.push(`id.in.(${matchedOwnerIds.join(',')})`)
+    }
+    query = query.or(filters.join(','))
   }
 
   // 정렬 및 페이지네이션
@@ -44,16 +78,16 @@ export async function getVendors(
   }
 
   return {
-    data: (data as BusinessOwner[]) || [],
+    data: ((data || []) as VendorWithBusinesses[]).map(mapVendor),
     total: count || 0,
   }
 }
 
 // 사업주 상세 조회
 export async function getVendor(id: string): Promise<BusinessOwner> {
-  const { data, error } = await supabase
+  const { data, error } = await vendorDb
     .from('business_owners')
-    .select('*')
+    .select('*, businesses(name, is_primary)')
     .eq('id', id)
     .single()
 
@@ -61,13 +95,14 @@ export async function getVendor(id: string): Promise<BusinessOwner> {
     throw new Error(error.message)
   }
 
-  return data as BusinessOwner
+  return mapVendor(data as VendorWithBusinesses)
 }
 
 // 사업주 생성 (Edge Function으로 Auth 계정 + business_owners 동시 생성)
 export async function createVendor(input: BusinessOwnerCreateInput): Promise<BusinessOwner> {
+  const { business_name: businessName, legal_name: legalName, ...ownerInput } = input
   const response = await supabase.functions.invoke('create-business-owner', {
-    body: input,
+    body: ownerInput,
   })
 
   if (response.error) {
@@ -81,10 +116,25 @@ export async function createVendor(input: BusinessOwnerCreateInput): Promise<Bus
 
   const vendor = result.vendor as BusinessOwner
 
+  const registeredName = legalName?.trim() || input.name.trim()
+  const operatingName = businessName?.trim() || input.name.trim()
+  const ownerUpdate = await vendorDb
+    .from('business_owners')
+    .update({ legal_name: registeredName, updated_at: new Date().toISOString() })
+    .eq('id', vendor.id)
+  if (ownerUpdate.error) throw new Error(ownerUpdate.error.message)
+
+  const businessUpdate = await vendorDb
+    .from('businesses')
+    .update({ name: operatingName, legal_name: registeredName, updated_at: new Date().toISOString() })
+    .eq('business_owner_id', vendor.id)
+    .eq('is_primary', true)
+  if (businessUpdate.error) throw new Error(businessUpdate.error.message)
+
   // 활동 로그 기록
   await logCreate('business_owner', vendor.id, vendor as unknown as Record<string, unknown>)
 
-  return vendor
+  return { ...vendor, legal_name: registeredName, primary_business_name: operatingName }
 }
 
 // 사업주 비밀번호 변경 (Edge Function)
@@ -115,10 +165,13 @@ export async function updateVendor(
     .eq('id', id)
     .single()
 
-  const { data, error } = await supabase
+  const { business_name: businessName, ...ownerInput } = input
+  const registeredName = ownerInput.legal_name?.trim() || ownerInput.name?.trim()
+  const { data, error } = await vendorDb
     .from('business_owners')
     .update({
-      ...input,
+      ...ownerInput,
+      ...(registeredName ? { legal_name: registeredName } : {}),
       updated_at: new Date().toISOString(),
     })
     .eq('id', id)
@@ -129,6 +182,19 @@ export async function updateVendor(
     throw new Error(error.message)
   }
 
+  if (businessName?.trim()) {
+    const businessUpdate = await vendorDb
+      .from('businesses')
+      .update({
+        name: businessName.trim(),
+        ...(registeredName ? { legal_name: registeredName } : {}),
+        updated_at: new Date().toISOString(),
+      })
+      .eq('business_owner_id', id)
+      .eq('is_primary', true)
+    if (businessUpdate.error) throw new Error(businessUpdate.error.message)
+  }
+
   // 활동 로그 기록
   await logUpdate(
     'business_owner',
@@ -137,7 +203,10 @@ export async function updateVendor(
     data as Record<string, unknown>
   )
 
-  return data as BusinessOwner
+  return {
+    ...(data as BusinessOwner),
+    primary_business_name: businessName?.trim() || undefined,
+  }
 }
 
 // 사업주 상태 변경
@@ -274,16 +343,16 @@ export async function updateCommissionRate(
 
 // 전체 사업주 목록 조회 (엑셀 다운로드용)
 export async function getAllVendors(): Promise<BusinessOwner[]> {
-  const { data, error } = await supabase
+  const { data, error } = await vendorDb
     .from('business_owners')
-    .select('*')
+    .select('*, businesses(name, is_primary)')
     .order('created_at', { ascending: false })
 
   if (error) {
     throw new Error(error.message)
   }
 
-  return (data as BusinessOwner[]) || []
+  return ((data || []) as VendorWithBusinesses[]).map(mapVendor)
 }
 
 // 사업주 대량 생성 (엑셀 업로드용) - 레거시, upsertVendorsBulk 사용 권장
@@ -354,6 +423,7 @@ export async function upsertVendorsBulk(
 // 사업주 문서 목록 조회
 // TODO: business_owner_documents 테이블 생성 후 활성화
 export async function getVendorDocuments(vendorId: string): Promise<BusinessOwnerDocument[]> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data, error } = await (supabase as any)
     .from('business_owner_documents')
     .select('*')
@@ -379,6 +449,7 @@ export async function getVendorDocuments(vendorId: string): Promise<BusinessOwne
 export async function addVendorDocument(
   input: BusinessOwnerDocumentCreateInput
 ): Promise<BusinessOwnerDocument> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data, error } = await (supabase as any)
     .from('business_owner_documents')
     .insert({
@@ -402,6 +473,7 @@ export async function addVendorDocument(
 
 // 사업주 문서 삭제
 export async function deleteVendorDocumentRecord(documentId: string): Promise<void> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { error } = await (supabase as any)
     .from('business_owner_documents')
     .delete()

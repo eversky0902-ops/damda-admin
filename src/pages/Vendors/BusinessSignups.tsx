@@ -54,7 +54,7 @@ export function BusinessSignupsPage() {
     const keyword = search.trim().toLowerCase()
     if (!keyword) return requests
     return requests.filter((request) =>
-      [request.email, request.business_name, request.business_number, request.contact_name]
+      [request.email, request.legal_name, request.business_name, request.business_number, request.contact_name]
         .filter((value): value is string => Boolean(value))
         .some((value) => value.toLowerCase().includes(keyword))
     )
@@ -116,6 +116,7 @@ export function BusinessSignupsPage() {
       width: 200,
       render: (name: string, request) => <Button type="link" style={{ padding: 0, height: 'auto', textAlign: 'left', whiteSpace: 'normal' }} onClick={() => openReview(request)}>{name}</Button>,
     },
+    { title: '상호명', dataIndex: 'legal_name', width: 200, render: (name: string | null) => name || '-' },
     { title: '사업자등록번호', dataIndex: 'business_number', width: 150 },
     { title: '대표자', dataIndex: 'representative', width: 100 },
     { title: '이메일', dataIndex: 'email', width: 220 },
@@ -145,7 +146,7 @@ export function BusinessSignupsPage() {
       {error && <Alert type="error" showIcon message={(error as Error).message} style={{ marginBottom: 16 }} />}
       <Input.Search
         allowClear
-        placeholder="사업자명, 사업자등록번호, 이메일, 담당자 검색"
+        placeholder="상호명, 사업자명, 사업자등록번호, 이메일, 담당자 검색"
         value={search}
         onChange={(event) => setSearch(event.target.value)}
         style={{ width: 420, marginBottom: 16 }}
@@ -155,7 +156,7 @@ export function BusinessSignupsPage() {
         loading={isLoading}
         columns={columns}
         dataSource={filteredRequests}
-        scroll={{ x: 1100 }}
+        scroll={{ x: 1300 }}
         onRow={(request) => ({ onClick: () => openReview(request), style: { cursor: 'pointer' } })}
         pagination={{ pageSize: 15, showTotal: (total) => `총 ${total}건` }}
       />
@@ -186,6 +187,7 @@ export function BusinessSignupsPage() {
             <Descriptions size="small" column={2} bordered style={{ marginTop: 12 }}>
               <Descriptions.Item label="신청일">{dayjs(selectedRequest.created_at).format('YYYY-MM-DD HH:mm')}</Descriptions.Item>
               <Descriptions.Item label="현재 상태"><Tag color={statusColor[selectedRequest.status]}>{statusLabel[selectedRequest.status]}</Tag></Descriptions.Item>
+              <Descriptions.Item label="상호명">{selectedRequest.legal_name || '-'}</Descriptions.Item>
               <Descriptions.Item label="사업자명">{selectedRequest.business_name}</Descriptions.Item>
               <Descriptions.Item label="사업자등록번호">{selectedRequest.business_number}</Descriptions.Item>
               <Descriptions.Item label="대표자명">{selectedRequest.representative}</Descriptions.Item>

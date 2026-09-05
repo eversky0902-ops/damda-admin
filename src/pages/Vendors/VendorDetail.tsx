@@ -306,7 +306,8 @@ export function VendorDetailPage() {
             <Descriptions.Item label="콘솔 계정">
               {vendor.auth_user_id ? <Tag color="green">연결 완료</Tag> : <Tag color="orange">미연결</Tag>}
             </Descriptions.Item>
-            <Descriptions.Item label="사업자명">{vendor.name}</Descriptions.Item>
+            <Descriptions.Item label="상호명">{vendor.legal_name || vendor.name}</Descriptions.Item>
+            <Descriptions.Item label="사업자명">{vendor.primary_business_name || vendor.name}</Descriptions.Item>
             <Descriptions.Item label="상태">
               <Space>
                 <Tag color={vendor.status === 'active' ? 'green' : 'default'}>

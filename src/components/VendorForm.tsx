@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { Form, Input, InputNumber, Button, Card, Typography, Row, Col, Modal, message, List, Space, Popconfirm, Upload, Spin } from 'antd'
 import { ArrowLeftOutlined, ShopOutlined, BankOutlined, SearchOutlined, FileTextOutlined, UploadOutlined, DeleteOutlined, FileOutlined, FilePdfOutlined, FileImageOutlined } from '@ant-design/icons'
 import { DaumPostcodeEmbed, type Address } from 'react-daum-postcode'
@@ -62,7 +62,6 @@ export function VendorForm({
   const [documentsLoading, setDocumentsLoading] = useState(false)
   const [documentUploadCount, setDocumentUploadCount] = useState(0)
   const documentsUploading = documentUploadCount > 0
-
   const isEdit = mode === 'edit'
 
   // 서비스 설정에서 기본 수수료율 조회
@@ -82,6 +81,13 @@ export function VendorForm({
       max: (obj.commission_rate_max as number) || 15,
     }
   })()
+  const normalizedInitialValues = initialValues
+    ? {
+        ...initialValues,
+        name: initialValues.legal_name || initialValues.name,
+        business_name: initialValues.primary_business_name || initialValues.name,
+      }
+    : { commission_rate: commissionSettings.defaultRate }
 
   // 기본 수수료율을 폼에 반영
   useEffect(() => {
@@ -90,14 +96,7 @@ export function VendorForm({
     }
   }, [siteSettings, isEdit, initialValues, form, commissionSettings.defaultRate])
 
-  // 문서 목록 로드
-  useEffect(() => {
-    if (isEdit && vendorId) {
-      loadDocuments()
-    }
-  }, [isEdit, vendorId])
-
-  const loadDocuments = async () => {
+  const loadDocuments = useCallback(async () => {
     if (!vendorId) return
     setDocumentsLoading(true)
     try {
@@ -108,7 +107,15 @@ export function VendorForm({
     } finally {
       setDocumentsLoading(false)
     }
-  }
+  }, [vendorId])
+
+  // 문서 목록 로드
+  useEffect(() => {
+    if (isEdit && vendorId) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      void loadDocuments()
+    }
+  }, [isEdit, vendorId, loadDocuments])
 
   const handleDocumentUpload = async (file: RcFile, documentType: BusinessOwnerDocumentType) => {
     if (!vendorId) {
@@ -141,7 +148,7 @@ export function VendorForm({
       })
       message.success(`${file.name} 파일이 업로드되었습니다`)
       await loadDocuments()
-    } catch (error) {
+    } catch {
       message.error('업로드에 실패했습니다')
     } finally {
       setDocumentUploadCount((count) => Math.max(0, count - 1))
@@ -155,7 +162,7 @@ export function VendorForm({
       await deleteVendorDocumentRecord(doc.id)
       message.success('파일이 삭제되었습니다')
       await loadDocuments()
-    } catch (error) {
+    } catch {
       message.error('삭제에 실패했습니다')
     }
   }
@@ -189,7 +196,7 @@ export function VendorForm({
       <Form
         form={form}
         layout="vertical"
-        initialValues={initialValues ?? { commission_rate: commissionSettings.defaultRate }}
+        initialValues={normalizedInitialValues}
         style={{ width: '100%' }}
         className="compact-form"
         requiredMark={(label, { required }) => (
@@ -249,13 +256,26 @@ export function VendorForm({
             <Col>
               <Form.Item
                 name="name"
-                label="사업자명"
-                extra="고객에게 노출되는 상호명입니다"
-                rules={[{ required: true, message: '사업자명을 입력하세요' }]}
+                label="상호명"
+                extra="사업자등록증에 기재된 사업자명입니다"
+                rules={[{ required: true, message: '상호명을 입력하세요' }]}
               >
-                <Input placeholder="예: 담다 플라워샵" style={{ width: 280 }} />
+                <Input placeholder="예: 주식회사 담다" style={{ width: 280 }} />
               </Form.Item>
             </Col>
+            <Col>
+              <Form.Item
+                name="business_name"
+                label="사업자명"
+                extra="실제로 운영 중인 체험처 이름입니다"
+                rules={[{ required: true, message: '사업자명을 입력하세요' }]}
+              >
+                <Input placeholder="예: 담다 플라워 체험관" style={{ width: 280 }} />
+              </Form.Item>
+            </Col>
+          </Row>
+
+          <Row gutter={24}>
             <Col>
               <Form.Item
                 name="business_number"

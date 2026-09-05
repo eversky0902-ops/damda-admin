@@ -7,6 +7,7 @@ const businessDb = supabase as any
 
 export interface BusinessInput {
   name: string
+  legal_name?: string
   business_number?: string
   representative?: string
   contact_name?: string
@@ -57,6 +58,7 @@ export async function createBusiness(ownerId: string, input: BusinessInput): Pro
     business_owner_id: ownerId,
     business_code: `DAMDA-B-${id.replaceAll('-', '').slice(0, 10).toUpperCase()}`,
     name: input.name.trim(),
+    legal_name: input.legal_name?.trim() || null,
     business_number: input.business_number?.replace(/\D/g, '') || null,
     representative: input.representative?.trim() || null,
     contact_name: input.contact_name?.trim() || null,
@@ -89,7 +91,7 @@ export async function createBusiness(ownerId: string, input: BusinessInput): Pro
 
 export async function updateBusiness(id: string, ownerId: string, input: BusinessInput): Promise<void> {
   const { error } = await businessDb.from('businesses').update({
-    name: input.name.trim(), business_number: input.business_number?.replace(/\D/g, '') || null,
+    name: input.name.trim(), legal_name: input.legal_name?.trim() || null, business_number: input.business_number?.replace(/\D/g, '') || null,
     representative: input.representative?.trim() || null, contact_name: input.contact_name?.trim() || null,
     contact_phone: input.contact_phone?.replace(/\D/g, '') || null, email: input.email?.trim() || null,
     address: input.address.trim(), address_detail: input.address_detail?.trim() || null,

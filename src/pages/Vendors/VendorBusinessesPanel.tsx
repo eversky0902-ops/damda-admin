@@ -30,7 +30,7 @@ export default function VendorBusinessesPanel({
   const openForm = (business?: Business) => {
     setEditing(business || null)
     form.setFieldsValue(business ? {
-      name: business.name, business_number: business.business_number || '', representative: business.representative || '',
+      legal_name: business.legal_name || vendor.legal_name || '', name: business.name, business_number: business.business_number || '', representative: business.representative || '',
       contact_name: business.contact_name || '', contact_phone: business.contact_phone || '', email: business.email || '',
       address: business.address, address_detail: business.address_detail || '', zipcode: business.zipcode || '', status: business.status,
       summary: business.summary || '', introduction: business.introduction || '', parking_available: business.parking_available ?? false,
@@ -38,7 +38,7 @@ export default function VendorBusinessesPanel({
       common_guide: business.common_guide || '', common_precautions: business.common_precautions || '',
       latitude: business.latitude, longitude: business.longitude, directions: business.directions || '', reservation_notice: business.reservation_notice || '',
     } : {
-      name: '', business_number: vendor.business_number, representative: vendor.representative,
+      legal_name: vendor.legal_name || vendor.name, name: '', business_number: vendor.business_number, representative: vendor.representative,
       contact_name: vendor.contact_name, contact_phone: vendor.contact_phone, email: vendor.email,
       address: vendor.address, address_detail: vendor.address_detail || '', zipcode: vendor.zipcode || '', status: 'active',
       summary: '', introduction: '', parking_available: false, parking_notice: '', facilities: [], common_guide: '', common_precautions: '',
@@ -61,6 +61,10 @@ export default function VendorBusinessesPanel({
       >
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', columnGap: 24, rowGap: 16, alignItems: 'start' }}>
           <div style={{ display: 'grid', gap: 6 }}>
+            <Typography.Text type="secondary">상호명</Typography.Text>
+            <Typography.Text>{business.legal_name || vendor.legal_name || '-'}</Typography.Text>
+          </div>
+          <div style={{ display: 'grid', gap: 6 }}>
             <Typography.Text type="secondary">사업장 코드</Typography.Text>
             <Typography.Text code copyable>{business.business_code}</Typography.Text>
           </div>
@@ -79,7 +83,8 @@ export default function VendorBusinessesPanel({
     />}
     <Modal title={editing ? '사업장 수정' : '사업장 추가'} open={open} onCancel={() => setOpen(false)} onOk={() => form.submit()} confirmLoading={saveMutation.isPending} width={720}>
       <Form form={form} layout="vertical" onFinish={(values) => saveMutation.mutate(values)}>
-        <Form.Item name="name" label="사업장명" rules={[{ required: true }]}><Input /></Form.Item>
+        <Form.Item name="legal_name" label="상호명" extra="사업자등록증에 기재된 사업자명입니다" rules={[{ required: true, message: '상호명을 입력하세요' }]}><Input /></Form.Item>
+        <Form.Item name="name" label="사업자명" extra="실제로 운영 중인 체험처 이름입니다" rules={[{ required: true, message: '사업자명을 입력하세요' }]}><Input /></Form.Item>
         <Space align="start" style={{ display: 'flex' }}><Form.Item name="business_number" label="사업자등록번호"><Input /></Form.Item><Form.Item name="representative" label="대표자"><Input /></Form.Item></Space>
         <Space align="start" style={{ display: 'flex' }}><Form.Item name="contact_name" label="담당자"><Input /></Form.Item><Form.Item name="contact_phone" label="연락처"><Input /></Form.Item><Form.Item name="email" label="이메일"><Input /></Form.Item></Space>
         <Space align="start" style={{ display: 'flex' }}><Form.Item name="zipcode" label="우편번호"><Input /></Form.Item><Form.Item name="address" label="주소" rules={[{ required: true }]}><Input style={{ width: 360 }} /></Form.Item></Space>

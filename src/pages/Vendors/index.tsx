@@ -173,49 +173,60 @@ export function VendorsPage() {
 
   const columns: ColumnsType<BusinessOwner> = [
     {
-      title: '사업자명',
-      dataIndex: 'name',
-      key: 'name',
-      render: (name: string, record) => (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+      title: '상호명',
+      dataIndex: 'legal_name',
+      key: 'legal_name',
+      width: 200,
+      render: (legalName: string | null, record) => (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, whiteSpace: 'nowrap' }}>
           <Avatar
             src={record.logo_url}
             icon={!record.logo_url && <ShopOutlined />}
             size={32}
             style={{ backgroundColor: record.logo_url ? undefined : '#f0f0f0', color: '#999' }}
           />
-          <a onClick={(e) => { e.stopPropagation(); navigate(`/vendors/${record.id}`); }}>{name}</a>
+          <a onClick={(e) => { e.stopPropagation(); navigate(`/vendors/${record.id}`); }}>{legalName || record.name}</a>
         </div>
       ),
+    },
+    {
+      title: '사업자명',
+      dataIndex: 'primary_business_name',
+      key: 'primary_business_name',
+      width: 200,
+      render: (name: string | null, record) => name || record.name || '-',
     },
     {
       title: '사업자번호',
       dataIndex: 'business_number',
       key: 'business_number',
+      width: 140,
     },
     {
       title: '사업주 코드',
       dataIndex: 'owner_code',
       key: 'owner_code',
-      width: 145,
+      width: 160,
       render: (code: string) => <Typography.Text code copyable>{code}</Typography.Text>,
     },
     {
       title: '비즈니스센터 ID',
       dataIndex: 'email',
       key: 'business_center_id',
-      width: 220,
+      width: 300,
       render: (email: string, record) => (
-        <div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, whiteSpace: 'nowrap' }}>
           <Typography.Text copyable={!!email}>{email || '-'}</Typography.Text>
-          <div><Tag color={record.auth_user_id ? 'green' : 'orange'}>{record.auth_user_id ? '가입·연결 완료' : '계정 미연결'}</Tag></div>
+          <Tag color={record.auth_user_id ? 'green' : 'orange'} style={{ marginInlineEnd: 0 }}>
+            {record.auth_user_id ? '가입·연결 완료' : '계정 미연결'}
+          </Tag>
         </div>
       ),
     },
     {
       title: '비밀번호',
       key: 'business_center_password',
-      width: 130,
+      width: 150,
       render: (_, record) => (
         <Button
           type="link"
@@ -234,16 +245,19 @@ export function VendorsPage() {
       title: '대표자',
       dataIndex: 'representative',
       key: 'representative',
+      width: 110,
     },
     {
       title: '담당자',
       dataIndex: 'contact_name',
       key: 'contact_name',
+      width: 110,
     },
     {
       title: '연락처',
       dataIndex: 'contact_phone',
       key: 'contact_phone',
+      width: 140,
       render: (phone: string) => formatPhoneNumber(phone),
     },
     {
@@ -251,13 +265,13 @@ export function VendorsPage() {
       dataIndex: 'commission_rate',
       key: 'commission_rate',
       render: (rate: number) => `${rate}%`,
-      width: 100,
+      width: 90,
     },
     {
       title: '상태',
       dataIndex: 'status',
       key: 'status',
-      width: 80,
+      width: 90,
       render: (status: VendorStatus) => (
         <Tag color={status === 'active' ? 'green' : 'default'}>
           {VENDOR_STATUS_LABEL[status]}
@@ -274,7 +288,7 @@ export function VendorsPage() {
     {
       title: '관리',
       key: 'actions',
-      width: 80,
+      width: 90,
       render: (_, record) => (
         <Button
           danger
@@ -329,7 +343,7 @@ export function VendorsPage() {
         borderRadius: 6,
       }}>
         <Input
-          placeholder="사업자명, 사업자번호 또는 사업주 코드"
+          placeholder="상호명, 사업자명, 사업자번호 또는 사업주 코드"
           value={searchInput}
           onChange={(e) => setSearchInput(e.target.value)}
           onPressEnter={handleSearch}
@@ -362,12 +376,14 @@ export function VendorsPage() {
       />
 
       <Table
+        className="vendor-list-table"
         columns={columns}
         dataSource={data?.data || []}
         rowKey="id"
         loading={isLoading}
         size="small"
         bordered
+        scroll={{ x: 1900 }}
         pagination={{
           current: page,
           pageSize,
@@ -411,7 +427,7 @@ export function VendorsPage() {
           style={{ marginBottom: 16 }}
         />
         <Typography.Paragraph>
-          확인을 위해 사업자명 <Typography.Text strong>{deleteTarget?.name}</Typography.Text>을(를) 입력하세요.
+          확인을 위해 아래 문구를 그대로 입력하세요: <Typography.Text strong>{deleteTarget?.name}</Typography.Text>
         </Typography.Paragraph>
         <Input
           value={deleteConfirmation}

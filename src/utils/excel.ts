@@ -5,7 +5,8 @@ import type { BusinessOwner, Product } from '@/types'
 export const VENDOR_EXCEL_COLUMNS = [
   { key: 'id', header: 'ID' },
   { key: 'owner_code', header: '사업주코드' },
-  { key: 'name', header: '사업자명' },
+  { key: 'legal_name', header: '상호명' },
+  { key: 'primary_business_name', header: '사업자명' },
   { key: 'business_number', header: '사업자번호' },
   { key: 'representative', header: '대표자' },
   { key: 'contact_name', header: '담당자' },
@@ -328,7 +329,10 @@ export const VENDOR_UPLOAD_COLUMNS = [
   { key: 'id', header: 'ID', required: false }, // ID가 있으면 수정, 없으면 신규
   { key: 'email', header: '이메일', required: true },
   { key: 'password', header: '비밀번호', required: false }, // 미입력 시 기본값: damda1234!
-  { key: 'name', header: '사업자명', required: true },
+  // business_owners.name is kept as the legacy/Edge Function input. The service
+  // copies this registered name to legal_name after the account is created.
+  { key: 'name', header: '상호명', required: true },
+  { key: 'business_name', header: '사업자명', required: true },
   { key: 'business_number', header: '사업자번호', required: true },
   { key: 'representative', header: '대표자', required: true },
   { key: 'contact_name', header: '담당자', required: true },
@@ -499,7 +503,7 @@ export async function parseExcelFile<T>(file: File): Promise<T[]> {
         const worksheet = workbook.Sheets[sheetName]
         const jsonData = XLSX.utils.sheet_to_json<T>(worksheet)
         resolve(jsonData)
-      } catch (error) {
+      } catch {
         reject(new Error('엑셀 파일을 파싱하는데 실패했습니다.'))
       }
     }
@@ -524,6 +528,7 @@ export function parseVendorExcelData(
   const headerKeyMap: Record<string, string> = {}
   VENDOR_UPLOAD_COLUMNS.forEach((col) => {
     headerKeyMap[col.header] = col.key
+    headerKeyMap[`${col.header}*`] = col.key
   })
   // 다운로드 엑셀에만 있는 헤더도 매핑 (무시 대상)
   VENDOR_EXCEL_COLUMNS.forEach((col) => {
@@ -837,7 +842,9 @@ export function downloadVendorTemplate() {
     [
       '', // ID (비워두면 신규 등록)
       'example@email.com',
-      '예시사업자',
+      '', // 비밀번호 (미입력 시 기본 비밀번호 사용)
+      '주식회사 예시체험',
+      '예시 키즈 체험관',
       '1234567890',
       '홍길동',
       '김담당',
@@ -873,6 +880,8 @@ export function downloadVendorTemplate() {
     [''],
     ['[필수 항목]'],
     ['* 표시가 있는 항목은 반드시 입력해야 합니다.'],
+    ['- 상호명: 사업자등록증에 기재된 사업자명'],
+    ['- 사업자명: 실제 운영 중인 체험처 이름'],
     [''],
     ['[사업자번호]'],
     ['- 하이픈(-) 없이 10자리 숫자만 입력'],

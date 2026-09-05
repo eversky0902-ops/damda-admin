@@ -12,6 +12,7 @@ export interface BusinessSignupRequest {
   auth_user_id: string
   email: string
   business_name: string
+  legal_name?: string | null
   business_number: string
   representative: string
   contact_name: string
