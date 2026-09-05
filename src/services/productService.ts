@@ -382,6 +382,34 @@ export async function deleteProduct(id: string): Promise<void> {
   await logDelete('product', id, beforeData as Record<string, unknown>)
 }
 
+export async function createAdminProductPreviewToken(
+  productId: string
+): Promise<{ token: string; expires_at: string }> {
+  // This RPC verifies the active administrator on the server and derives the
+  // business owner from the product instead of trusting client-provided data.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data, error } = await (supabase as any).rpc('create_admin_product_preview_token', {
+    p_product_id: productId,
+  })
+
+  if (error) {
+    if (error.message.includes('ADMIN_REQUIRED')) {
+      throw new Error('관리자 권한을 확인할 수 없습니다. 다시 로그인해주세요.')
+    }
+    if (error.message.includes('PRODUCT_NOT_FOUND')) {
+      throw new Error('미리보기할 상품을 찾을 수 없습니다.')
+    }
+    throw new Error(error.message)
+  }
+
+  const preview = Array.isArray(data) ? data[0] : data
+  if (!preview?.token || !preview?.expires_at) {
+    throw new Error('상품 미리보기 링크를 만들지 못했습니다.')
+  }
+
+  return preview as { token: string; expires_at: string }
+}
+
 // 상품 노출 상태 변경
 export async function updateProductVisibility(id: string, is_visible: boolean): Promise<Product> {
   return updateProduct(id, { is_visible })

@@ -46,6 +46,7 @@ export async function getBusinessSignupRequests(): Promise<BusinessSignupRequest
   const { data, error } = await signupSchema
     .from('business_owner_signup_requests')
     .select('*')
+    .in('status', ['pending', 'on_hold', 'rejected'])
     .order('created_at', { ascending: false })
 
   if (error) throw new Error(error.message)
@@ -115,7 +116,7 @@ export async function reviewBusinessSignup({
     if (error.message.includes('BUSINESS_OWNER_REQUIRED')) throw new Error('가입 신청에 연결된 사업주 계정을 찾을 수 없습니다.')
     if (error.message.includes('BUSINESS_OWNER_NOT_FOUND')) throw new Error('가입 신청에 연결된 사업주 계정을 생성할 수 없습니다.')
     if (error.message.includes('BUSINESS_OWNER_SIGNUP_CONFLICT')) throw new Error('동일한 이메일 또는 사업자등록번호의 사업주가 이미 존재합니다.')
-    if (error.message.includes('BUSINESS_OWNER_EMAIL_MISMATCH')) throw new Error('가입 이메일과 선택한 사업주의 이메일이 일치하지 않습니다.')
+    if (error.message.includes('BUSINESS_OWNER_EMAIL_MISMATCH')) throw new Error('가입 이메일과 연결된 사업주 계정의 이메일이 일치하지 않습니다.')
     throw new Error(error.message)
   }
   if (!data?.success) throw new Error('가입 신청 상태 변경에 실패했습니다.')

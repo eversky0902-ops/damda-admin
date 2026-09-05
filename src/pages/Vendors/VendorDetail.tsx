@@ -140,7 +140,7 @@ export function VendorDetailPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['vendor', id] })
       queryClient.invalidateQueries({ queryKey: ['businessSignupRequests'] })
-      message.success('사업주 콘솔 계정이 연결되었습니다.')
+      message.success('담다 비즈니스센터 계정이 연결되었습니다.')
     },
     onError: (error: Error) => {
       message.error(error.message)
@@ -149,7 +149,7 @@ export function VendorDetailPage() {
 
   const handleAccountMatching = (requestId: string, email: string) => {
     Modal.confirm({
-      title: '사업주 콘솔 계정 연결',
+      title: '담다 비즈니스센터 계정 연결',
       content: `${email} 계정을 ${vendor?.name || '이 사업주'}에 연결할까요?`,
       okText: '연결',
       cancelText: '취소',
@@ -346,7 +346,7 @@ export function VendorDetailPage() {
             </Descriptions.Item>
           </Descriptions>
 
-          <h4 style={{ marginTop: 24, marginBottom: 12 }}>사업주 콘솔 계정 매칭</h4>
+          <h4 style={{ marginTop: 24, marginBottom: 12 }}>담다 비즈니스센터 계정 매칭</h4>
           <Alert
             type="info"
             showIcon

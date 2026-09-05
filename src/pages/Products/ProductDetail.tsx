@@ -19,6 +19,7 @@ import {
   EditOutlined,
   DeleteOutlined,
   PlusOutlined,
+  EyeOutlined,
 } from '@ant-design/icons'
 import type { ColumnsType } from 'antd/es/table'
 import dayjs from 'dayjs'
@@ -28,6 +29,7 @@ import {
   updateProductVisibility,
   updateProductSoldOut,
   deleteProduct,
+  createAdminProductPreviewToken,
 } from '@/services/productService'
 import {
   PRODUCT_STATUS_LABEL,
@@ -54,6 +56,35 @@ export function ProductDetailPage() {
     queryFn: () => getProduct(id!),
     enabled: !!id,
   })
+
+  const previewMutation = useMutation({
+    mutationFn: () => createAdminProductPreviewToken(id!),
+    onError: (error: Error) => {
+      message.error(error.message)
+    },
+  })
+
+  const handlePreview = async () => {
+    if (!product?.business_id) {
+      message.error('연결된 사업장이 없어 메인 홈페이지 미리보기를 열 수 없습니다.')
+      return
+    }
+
+    try {
+      const preview = await previewMutation.mutateAsync()
+      const userSiteUrl = import.meta.env.DEV
+        ? `${window.location.protocol}//${window.location.hostname}:3000`
+        : (import.meta.env.VITE_USER_SITE_URL || 'https://withdamda.kr')
+      // 메인 홈페이지의 실제 고객 동선(업체 카드 → 사업장 상세 → 상품 선택)을
+      // 그대로 확인할 수 있도록 상품 상세가 아닌 사업장 화면을 엽니다.
+      const previewUrl = new URL(`/businesses/${product.business_id}`, userSiteUrl)
+      previewUrl.searchParams.set('preview_product_id', id!)
+      previewUrl.searchParams.set('preview_token', preview.token)
+      window.location.assign(previewUrl.toString())
+    } catch {
+      // The mutation displays the server error and keeps the administrator here.
+    }
+  }
 
   // 노출 상태 변경
   const visibilityMutation = useMutation({
@@ -162,7 +193,15 @@ export function ProductDetailPage() {
       children: (
         <>
           <div style={{ marginBottom: 12, textAlign: 'right' }}>
-            <Space>
+            <Space wrap>
+              <Button
+                type="primary"
+                icon={<EyeOutlined />}
+                loading={previewMutation.isPending}
+                onClick={handlePreview}
+              >
+                상품 미리보기
+              </Button>
               <Button icon={<PlusOutlined />} onClick={() => navigate(`/products/new?business_owner_id=${encodeURIComponent(product.business_owner_id)}${product.business_id ? `&business_id=${encodeURIComponent(product.business_id)}` : ''}`)}>
                 상품 추가
               </Button>

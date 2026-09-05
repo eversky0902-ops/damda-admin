@@ -672,7 +672,7 @@ export function ProductForm({
             <Select
               placeholder={selectedBusinessOwnerId ? '상품 선택' : '사업주를 먼저 선택하세요'}
               style={{ width: 360 }}
-              disabled={!selectedBusinessOwnerId || isEdit}
+              disabled={!selectedBusinessOwnerId}
               options={(businesses || []).map((business) => ({
                 value: business.id,
                 label: `${business.name} (${business.product_count || 0}/${MAX_PRODUCTS_PER_BUSINESS_OWNER})`,

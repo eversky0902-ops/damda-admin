@@ -15,6 +15,7 @@ import {
 } from 'antd'
 import type { ColumnsType } from 'antd/es/table'
 import dayjs from 'dayjs'
+import { useNavigate } from 'react-router-dom'
 import {
   getBusinessSignupDocumentUrl,
   getBusinessSignupRequests,
@@ -39,6 +40,7 @@ const statusColor: Record<BusinessSignupStatus, string> = {
 
 export function BusinessSignupsPage() {
   const queryClient = useQueryClient()
+  const navigate = useNavigate()
   const [selectedRequest, setSelectedRequest] = useState<BusinessSignupRequest | null>(null)
   const [reviewStatus, setReviewStatus] = useState<Exclude<BusinessSignupStatus, 'pending'>>('on_hold')
   const [reviewNote, setReviewNote] = useState('')
@@ -71,10 +73,15 @@ export function BusinessSignupsPage() {
         ? request.matched_business_owner_id || request.auth_user_id
         : undefined,
     }),
-    onSuccess: () => {
+    onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['business-signup-requests'] })
       setSelectedRequest(null)
       setReviewNote('')
+      if (variables.status === 'approved') {
+        message.success('가입 승인이 완료되어 사업주 목록으로 이동합니다.')
+        navigate('/vendors')
+        return
+      }
       message.success('가입 신청 상태와 관리자 메모가 저장되었습니다.')
     },
     onError: (mutationError: Error) => message.error(mutationError.message),
@@ -131,7 +138,7 @@ export function BusinessSignupsPage() {
       <div style={{ marginBottom: 20 }}>
         <Typography.Title level={2} style={{ marginBottom: 4 }}>사업주 가입 승인</Typography.Title>
         <Typography.Text type="secondary">
-          사업주 콘솔의 가입 신청 정보를 확인하고 처리 상태를 관리합니다.
+          담다 비즈니스센터의 가입 신청 정보를 확인하고 처리 상태를 관리합니다.
         </Typography.Text>
       </div>
 

@@ -254,7 +254,7 @@ export function PartnerOnboardingDetailPage({
       const labels: Record<string, string> = {
         contract: '계약서 발송 요청을 접수했습니다.', revision: '수정 요청을 등록했습니다.',
         ready: '입점 승인 대기로 변경했습니다.', approve: '사업주와 상품이 생성되었습니다.',
-        link: '사업주 콘솔 가입 계정을 연결했습니다.',
+        link: '담다 비즈니스센터 가입 계정을 연결했습니다.',
       }
       message.success(labels[variables.action])
       setRevisionOpen(false)
@@ -374,11 +374,11 @@ export function PartnerOnboardingDetailPage({
   const accountContractTab = (
     <Row gutter={[16, 16]}>
       <Col xs={24} lg={12}>
-        <Card title={<Space><UserAddOutlined />사업주 콘솔 가입 매칭</Space>}>
-          <Alert type="info" showIcon style={{ marginBottom: 12 }} message={`사업주 코드: ${onboarding.owner_code}`} description="현장에서 사업주콘솔 회원가입 시 이 코드와 동일한 사업자번호를 입력해주세요." />
+        <Card title={<Space><UserAddOutlined />담다 비즈니스센터 가입 매칭</Space>}>
+          <Alert type="info" showIcon style={{ marginBottom: 12 }} message={`사업주 코드: ${onboarding.owner_code}`} description="현장에서 담다 비즈니스센터 회원가입 시 이 코드와 동일한 사업자번호를 입력해주세요." />
           <Space wrap style={{ marginBottom: 12 }}>
             <Button onClick={() => navigator.clipboard.writeText(onboarding.owner_code)}>코드 복사</Button>
-            {businessSignupUrl && <Button type="primary" href={businessSignupUrl} target="_blank" icon={<LinkOutlined />}>사업주콘솔 가입 열기</Button>}
+            {businessSignupUrl && <Button type="primary" href={businessSignupUrl} target="_blank" icon={<LinkOutlined />}>담다 비즈니스센터 가입 열기</Button>}
           </Space>
           {onboarding.signup_request ? (
             <Alert
@@ -389,7 +389,7 @@ export function PartnerOnboardingDetailPage({
             />
           ) : (
             <>
-              <Typography.Paragraph type="secondary">사업주 콘솔에서 회원가입하면 동일한 사업자번호의 가입 요청이 표시됩니다.</Typography.Paragraph>
+              <Typography.Paragraph type="secondary">담다 비즈니스센터에서 회원가입하면 동일한 사업자번호의 가입 요청이 표시됩니다.</Typography.Paragraph>
               <Button icon={<ReloadOutlined />} onClick={() => candidatesQuery.refetch()} loading={candidatesQuery.isFetching}>가입 요청 다시 조회</Button>
               <List
                 style={{ marginTop: 12 }}
@@ -461,7 +461,7 @@ export function PartnerOnboardingDetailPage({
           {onboarding.status === 'revision_requested' && (
             <Alert type="warning" showIcon message="관리자가 수정을 요청했습니다." description={onboarding.revision_note || '수정 요청 내용을 관리자에게 확인해주세요.'} />
           )}
-          {onboarding.status === 'approved' && <Alert type="success" showIcon message="입점 승인이 완료되었습니다." description="사업주와 상품이 생성되었고 사업주콘솔 로그인이 활성화되었습니다." />}
+          {onboarding.status === 'approved' && <Alert type="success" showIcon message="입점 승인이 완료되었습니다." description="사업주와 상품이 생성되었고 담다 비즈니스센터 로그인이 활성화되었습니다." />}
         </Card>
       </Col>
       <Col xs={24} lg={10}>
