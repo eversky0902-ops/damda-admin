@@ -78,7 +78,7 @@ export function BusinessSignupsPage() {
       setSelectedRequest(null)
       setReviewNote('')
       if (variables.status === 'approved') {
-        message.success('가입 승인이 완료되어 사업주 목록으로 이동합니다.')
+        message.success('가입 승인이 완료되어 해당 계정으로 로그인할 수 있습니다.')
         navigate('/vendors')
         return
       }
