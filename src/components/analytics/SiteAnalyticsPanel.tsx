@@ -20,16 +20,21 @@ export function SiteAnalyticsPanel({ title = '홈페이지 방문·CTA 통계' }
     queryFn: () => getSiteAnalytics(startDate, endDate),
   })
 
-  const totals = useMemo(() => data.reduce(
+  const dailyData = useMemo(
+    () => [...data].sort((a, b) => a.metric_date.localeCompare(b.metric_date)),
+    [data],
+  )
+
+  const totals = useMemo(() => dailyData.reduce(
     (sum, day) => ({
       daily_visits: sum.daily_visits + day.daily_visits,
       partner_cta_clicks: sum.partner_cta_clicks + day.partner_cta_clicks,
       signup_cta_clicks: sum.signup_cta_clicks + day.signup_cta_clicks,
     }),
     { daily_visits: 0, partner_cta_clicks: 0, signup_cta_clicks: 0 },
-  ), [data])
+  ), [dailyData])
 
-  const chartData = data.map((day) => ({ ...day, displayDate: dayjs(day.metric_date).format('M/D') }))
+  const chartData = dailyData.map((day) => ({ ...day, displayDate: dayjs(day.metric_date).format('M/D') }))
 
   return (
     <Card
@@ -85,7 +90,7 @@ export function SiteAnalyticsPanel({ title = '홈페이지 방문·CTA 통계' }
             rowKey="metric_date"
             size="small"
             pagination={{ pageSize: 10, showSizeChanger: false }}
-            dataSource={[...data].reverse()}
+            dataSource={dailyData}
             columns={[
               { title: '일자', dataIndex: 'metric_date', render: (value: string) => dayjs(value).format('YYYY.MM.DD') },
               { title: '순방문 수', dataIndex: 'daily_visits', align: 'right', render: (value: number) => `${value.toLocaleString()}명` },
