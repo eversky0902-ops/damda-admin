@@ -199,11 +199,18 @@ export async function completeSettlement(id: string): Promise<Settlement> {
       settled_at: new Date().toISOString(),
     })
     .eq('id', id)
+    // A settlement must be paid only once. The status condition makes a
+    // repeated click (or a stale second browser tab) a safe no-op.
+    .eq('status', 'pending')
     .select()
-    .single()
+    .maybeSingle()
 
   if (error) {
     throw new Error(error.message)
+  }
+
+  if (!data) {
+    throw new Error('이미 완료되었거나 처리할 수 없는 정산입니다')
   }
 
   return data as Settlement

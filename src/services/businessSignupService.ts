@@ -112,7 +112,7 @@ export async function reviewBusinessSignup({
   })
 
   if (error) {
-    if (error.message.includes('BUSINESS_OWNER_REQUIRED')) throw new Error('승인완료 처리할 등록 사업자를 선택해주세요.')
+    if (error.message.includes('BUSINESS_OWNER_REQUIRED')) throw new Error('가입 신청에 연결된 사업주 계정을 찾을 수 없습니다.')
     if (error.message.includes('BUSINESS_OWNER_EMAIL_MISMATCH')) throw new Error('가입 이메일과 선택한 사업주의 이메일이 일치하지 않습니다.')
     throw new Error(error.message)
   }

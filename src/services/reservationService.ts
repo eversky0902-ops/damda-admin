@@ -10,6 +10,15 @@ import type {
 } from '@/types'
 import type { TablesUpdate } from '@/types/database'
 
+const ALLOWED_ADMIN_STATUS_TRANSITIONS: Record<ReservationStatusType, ReservationStatusType[]> = {
+  pending: ['cancelled'],
+  paid: ['confirmed', 'cancelled'],
+  confirmed: ['completed', 'cancelled'],
+  completed: [],
+  cancelled: [],
+  refunded: [],
+}
+
 // 예약 목록 조회
 export async function getReservations(
   params: PaginationParams & ReservationFilter
@@ -122,6 +131,15 @@ export async function updateReservationStatus(
     .select('*')
     .eq('id', id)
     .single()
+
+  if (!beforeData) {
+    throw new Error('예약 정보를 찾을 수 없습니다')
+  }
+
+  const currentStatus = beforeData.status as ReservationStatusType
+  if (!ALLOWED_ADMIN_STATUS_TRANSITIONS[currentStatus]?.includes(status)) {
+    throw new Error(`예약 상태를 ${currentStatus}에서 ${status}(으)로 변경할 수 없습니다`)
+  }
 
   const updateData: TablesUpdate<'reservations'> = {
     status,

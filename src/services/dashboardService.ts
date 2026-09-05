@@ -1,6 +1,7 @@
 import { supabase } from '@/lib/supabase'
 import { getSetting } from '@/services/settingsService'
 import type { Reservation } from '@/types'
+import dayjs from 'dayjs'
 
 // 대시보드 통계 타입
 export interface DashboardStats {
@@ -86,11 +87,14 @@ export interface StatusData {
 
 // 대시보드 통계 조회
 export async function getDashboardStats(): Promise<DashboardStats> {
-  const now = new Date()
-  const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0]
-  const firstDayOfLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1).toISOString().split('T')[0]
-  const lastDayOfLastMonth = new Date(now.getFullYear(), now.getMonth(), 0).toISOString().split('T')[0]
-  const today = now.toISOString().split('T')[0]
+  // Date-only filters must be based on the operator's local calendar day.
+  // Converting local midnight with toISOString() shifts it to the previous day
+  // in Korea and produced incorrect dashboard totals around month boundaries.
+  const now = dayjs()
+  const firstDayOfMonth = now.startOf('month').format('YYYY-MM-DD')
+  const firstDayOfLastMonth = now.subtract(1, 'month').startOf('month').format('YYYY-MM-DD')
+  const lastDayOfLastMonth = now.subtract(1, 'month').endOf('month').format('YYYY-MM-DD')
+  const today = now.format('YYYY-MM-DD')
 
   const [
     monthlyPayments,

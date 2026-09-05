@@ -22,14 +22,12 @@ import {
   type BusinessSignupRequest,
   type BusinessSignupStatus,
 } from '@/services/businessSignupService'
-import { getAllVendors } from '@/services/vendorService'
-import type { BusinessOwner } from '@/types'
 
 const statusLabel: Record<BusinessSignupStatus, string> = {
   pending: '승인대기',
   approved: '승인완료',
-  rejected: '승인거절',
-  on_hold: '보류',
+  rejected: '거절',
+  on_hold: '승인보류',
 }
 
 const statusColor: Record<BusinessSignupStatus, string> = {
@@ -42,8 +40,7 @@ const statusColor: Record<BusinessSignupStatus, string> = {
 export function BusinessSignupsPage() {
   const queryClient = useQueryClient()
   const [selectedRequest, setSelectedRequest] = useState<BusinessSignupRequest | null>(null)
-  const [selectedVendorId, setSelectedVendorId] = useState<string>()
-  const [reviewStatus, setReviewStatus] = useState<BusinessSignupStatus>('pending')
+  const [reviewStatus, setReviewStatus] = useState<Exclude<BusinessSignupStatus, 'pending'>>('on_hold')
   const [reviewNote, setReviewNote] = useState('')
   const [search, setSearch] = useState('')
 
@@ -51,11 +48,6 @@ export function BusinessSignupsPage() {
     queryKey: ['business-signup-requests'],
     queryFn: getBusinessSignupRequests,
   })
-  const { data: vendors = [] } = useQuery({
-    queryKey: ['vendors', 'all-for-signup-matching'],
-    queryFn: getAllVendors,
-  })
-
   const filteredRequests = useMemo(() => {
     const keyword = search.trim().toLowerCase()
     if (!keyword) return requests
@@ -67,17 +59,21 @@ export function BusinessSignupsPage() {
   }, [requests, search])
 
   const reviewMutation = useMutation({
-    mutationFn: ({ request, status, note, vendorId }: {
+    mutationFn: ({ request, status, note }: {
       request: BusinessSignupRequest
       status: Exclude<BusinessSignupStatus, 'pending'>
       note: string
-      vendorId?: string
-    }) => reviewBusinessSignup({ requestId: request.id, status, reviewNote: note, businessOwnerId: vendorId }),
+    }) => reviewBusinessSignup({
+      requestId: request.id,
+      status,
+      reviewNote: note,
+      businessOwnerId: status === 'approved'
+        ? request.matched_business_owner_id || request.auth_user_id
+        : undefined,
+    }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['business-signup-requests'] })
-      queryClient.invalidateQueries({ queryKey: ['vendors'] })
       setSelectedRequest(null)
-      setSelectedVendorId(undefined)
       setReviewNote('')
       message.success('가입 신청 상태와 관리자 메모가 저장되었습니다.')
     },
@@ -86,10 +82,7 @@ export function BusinessSignupsPage() {
 
   const openReview = (request: BusinessSignupRequest) => {
     setSelectedRequest(request)
-    const requestEmail = request.email.trim().toLowerCase()
-    const exactMatch = vendors.find((vendor) => vendor.email.trim().toLowerCase() === requestEmail)
-    setSelectedVendorId(request.matched_business_owner_id || exactMatch?.id)
-    setReviewStatus(request.status)
+    setReviewStatus(request.status === 'pending' ? 'on_hold' : request.status)
     setReviewNote(request.review_note || '')
   }
 
@@ -133,17 +126,12 @@ export function BusinessSignupsPage() {
     },
   ]
 
-  const selectedVendor = vendors.find((vendor) => vendor.id === selectedVendorId)
-  const isEmailMatched = selectedVendor?.email.trim().toLowerCase() === selectedRequest?.email.trim().toLowerCase()
-  const canSaveReview = reviewStatus !== 'pending'
-    && (reviewStatus !== 'approved' || (!!selectedVendorId && isEmailMatched))
-
   return (
     <div>
       <div style={{ marginBottom: 20 }}>
         <Typography.Title level={2} style={{ marginBottom: 4 }}>사업주 가입 승인</Typography.Title>
         <Typography.Text type="secondary">
-          사업주 콘솔에서 가입한 계정을 등록된 사업자와 매칭하면 로그인이 활성화됩니다.
+          사업주 콘솔의 가입 신청 정보를 확인하고 처리 상태를 관리합니다.
         </Typography.Text>
       </div>
 
@@ -168,22 +156,19 @@ export function BusinessSignupsPage() {
       <Modal
         title="가입 신청 상세·검토"
         open={!!selectedRequest}
-        okText={reviewStatus === 'approved' ? '승인완료 저장' : reviewStatus === 'rejected' ? '승인거절 저장' : '보류 저장'}
+        okText={reviewStatus === 'approved' ? '승인완료 저장' : reviewStatus === 'rejected' ? '거절 저장' : '승인보류 저장'}
         cancelText="취소"
         confirmLoading={reviewMutation.isPending}
-        okButtonProps={{ disabled: !canSaveReview }}
         onCancel={() => {
           setSelectedRequest(null)
-          setSelectedVendorId(undefined)
           setReviewNote('')
         }}
         onOk={() => {
-          if (selectedRequest && reviewStatus !== 'pending') {
+          if (selectedRequest) {
             reviewMutation.mutate({
               request: selectedRequest,
               status: reviewStatus,
               note: reviewNote,
-              vendorId: reviewStatus === 'approved' ? selectedVendorId : undefined,
             })
           }
         }}
@@ -242,34 +227,16 @@ export function BusinessSignupsPage() {
               onChange={setReviewStatus}
               style={{ width: '100%', marginTop: 8 }}
               options={[
-                { value: 'pending', label: '승인대기', disabled: true },
                 { value: 'approved', label: '승인완료' },
-                { value: 'rejected', label: '승인거절' },
-                { value: 'on_hold', label: '보류' },
+                { value: 'on_hold', label: '승인보류' },
+                { value: 'rejected', label: '거절' },
               ]}
             />
-            {reviewStatus === 'approved' && <>
-              <Typography.Text strong style={{ display: 'block', marginTop: 16 }}>매칭할 등록 사업자</Typography.Text>
-              <Select
-                showSearch
-                allowClear
-                value={selectedVendorId}
-                onChange={setSelectedVendorId}
-                placeholder="사업자를 선택하세요"
-                optionFilterProp="label"
-                style={{ width: '100%', marginTop: 8 }}
-                options={vendors.map((vendor: BusinessOwner) => ({
-                  value: vendor.id,
-                  label: `${vendor.name} · ${vendor.owner_code} · ${vendor.email} · ${vendor.business_number}`,
-                }))}
-              />
-              {selectedVendor && !isEmailMatched && <Alert type="warning" showIcon message="가입 이메일과 선택한 사업주의 이메일이 다릅니다. 연결할 수 없습니다." style={{ marginTop: 12 }} />}
-            </>}
             <Typography.Text strong style={{ display: 'block', marginTop: 16 }}>관리자 메모</Typography.Text>
             <Input.TextArea
               value={reviewNote}
               onChange={(event) => setReviewNote(event.target.value)}
-              placeholder="승인·거절·보류 사유와 후속 조치 내용을 남겨주세요."
+              placeholder="승인완료·승인보류·거절 사유와 후속 조치 내용을 남겨주세요."
               rows={4}
               maxLength={1000}
               showCount
