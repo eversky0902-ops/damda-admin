@@ -35,6 +35,7 @@ export async function getDaycares({
   }
 
   const { data, count, error } = await query
+    .neq('status', 'deleted')
     .order('created_at', { ascending: false })
     .range(from, to)
 
@@ -56,6 +57,7 @@ export async function getAllDaycares(): Promise<Daycare[]> {
   const { data, error } = await supabase
     .from('daycares')
     .select('*')
+    .neq('status', 'deleted')
     .order('created_at', { ascending: false })
 
   if (error) {
@@ -105,6 +107,7 @@ export async function getDaycare(id: string): Promise<Daycare> {
     .from('daycares')
     .select('*')
     .eq('id', id)
+    .neq('status', 'deleted')
     .single()
 
   if (error) {
@@ -171,6 +174,33 @@ export async function updateDaycareStatus(
     beforeData as Record<string, unknown>,
     afterData as Record<string, unknown>
   )
+}
+
+// 회원 안전 삭제: 로그인 계정을 폐기하고 목록에서 숨기되 거래 이력은 보존합니다.
+export async function deleteDaycareSafely(id: string, confirmationName: string): Promise<void> {
+  // The RPC is deployed by the safe member deletion migration; generated DB types lag behind it.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { error } = await (supabase as any).rpc('delete_daycare_safely', {
+    p_daycare_id: id,
+    p_confirmation_name: confirmationName,
+  })
+
+  if (!error) return
+
+  if (error.message.includes('CONFIRMATION_NAME_MISMATCH')) {
+    throw new Error('회원명이 일치하지 않습니다')
+  }
+  if (error.message.includes('DAYCARE_NOT_FOUND')) {
+    throw new Error('이미 삭제되었거나 존재하지 않는 회원입니다')
+  }
+  if (error.message.includes('SHARED_AUTH_ACCOUNT')) {
+    throw new Error('사업주 계정과 연결된 회원은 삭제할 수 없습니다')
+  }
+  if (error.message.includes('ADMIN_REQUIRED')) {
+    throw new Error('회원 삭제 권한이 없습니다')
+  }
+
+  throw new Error(error.message || '회원 삭제에 실패했습니다')
 }
 
 // 어린이집 정보 수정
@@ -260,6 +290,7 @@ export async function deleteDaycareMemo(memoId: string): Promise<void> {
 // 어린이집 문서 목록 조회
 // TODO: daycare_documents 테이블 생성 후 활성화
 export async function getDaycareDocuments(daycareId: string): Promise<DaycareDocument[]> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data, error } = await (supabase as any)
     .from('daycare_documents')
     .select('*')
@@ -278,6 +309,7 @@ export async function getDaycareDocuments(daycareId: string): Promise<DaycareDoc
 export async function addDaycareDocument(
   input: DaycareDocumentCreateInput
 ): Promise<DaycareDocument> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data, error } = await (supabase as any)
     .from('daycare_documents')
     .insert({
@@ -301,6 +333,7 @@ export async function addDaycareDocument(
 
 // 어린이집 문서 삭제
 export async function deleteDaycareDocumentRecord(documentId: string): Promise<void> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { error } = await (supabase as any)
     .from('daycare_documents')
     .delete()

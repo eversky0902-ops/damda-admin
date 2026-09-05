@@ -9,6 +9,7 @@ import {
   DownloadOutlined,
   UploadOutlined,
   DeleteOutlined,
+  LockOutlined,
 } from '@ant-design/icons'
 import type { ColumnsType, TablePaginationConfig } from 'antd/es/table'
 import type { MenuProps } from 'antd'
@@ -200,6 +201,36 @@ export function VendorsPage() {
       render: (code: string) => <Typography.Text code copyable>{code}</Typography.Text>,
     },
     {
+      title: '비즈니스센터 ID',
+      dataIndex: 'email',
+      key: 'business_center_id',
+      width: 220,
+      render: (email: string, record) => (
+        <div>
+          <Typography.Text copyable={!!email}>{email || '-'}</Typography.Text>
+          <div><Tag color={record.auth_user_id ? 'green' : 'orange'}>{record.auth_user_id ? '가입·연결 완료' : '계정 미연결'}</Tag></div>
+        </div>
+      ),
+    },
+    {
+      title: '비밀번호',
+      key: 'business_center_password',
+      width: 130,
+      render: (_, record) => (
+        <Button
+          type="link"
+          size="small"
+          icon={<LockOutlined />}
+          onClick={(event) => {
+            event.stopPropagation()
+            navigate(`/vendors/${record.id}`)
+          }}
+        >
+          안전하게 재설정
+        </Button>
+      ),
+    },
+    {
       title: '대표자',
       dataIndex: 'representative',
       key: 'representative',
@@ -322,6 +353,13 @@ export function VendorsPage() {
           검색
         </Button>
       </div>
+
+      <Alert
+        type="info"
+        showIcon
+        style={{ marginBottom: 12 }}
+        message="비즈니스센터 ID는 복사할 수 있습니다. 기존 비밀번호는 암호화되어 조회할 수 없으며, 사업주 상세에서 새 비밀번호로 안전하게 재설정할 수 있습니다."
+      />
 
       <Table
         columns={columns}

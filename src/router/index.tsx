@@ -67,6 +67,7 @@ import { LegalDocumentsPage } from '@/pages/content/LegalDocuments'
 import { LegalDocumentDetailPage } from '@/pages/content/LegalDocuments/LegalDocumentDetail'
 import { LegalDocumentCreatePage } from '@/pages/content/LegalDocuments/LegalDocumentCreate'
 import { LegalDocumentEditPage } from '@/pages/content/LegalDocuments/LegalDocumentEdit'
+import { SiteAnalyticsPage } from '@/pages/content/SiteAnalytics'
 
 // Settings Pages
 import { SettingsPage } from '@/pages/settings'
@@ -225,25 +226,16 @@ export const router = createBrowserRouter([
         path: 'partner-inquiries/:id',
         element: <PartnerInquiryDetailPage />,
       },
-      // Partner onboarding
-      {
-        path: 'partner-onboardings',
-        element: <PartnerOnboardingsPage />,
-      },
-      {
-        path: 'partner-onboardings/new',
-        element: <PartnerOnboardingCreatePage />,
-      },
-      {
-        path: 'partner-onboardings/:id',
-        element: <PartnerOnboardingDetailPage />,
-      },
       // Stats
       {
         path: 'stats/regional',
         element: <RegionalMonthlyStatsPage />,
       },
       // Content - Notices
+      {
+        path: 'content/analytics',
+        element: <SiteAnalyticsPage />,
+      },
       {
         path: 'content/notices',
         element: <NoticesPage />,

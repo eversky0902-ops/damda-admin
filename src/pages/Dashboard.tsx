@@ -37,6 +37,7 @@ import {
 } from '@/services/dashboardService'
 import { RESERVATION_STATUS_LABEL, RESERVATION_STATUS_COLOR } from '@/constants'
 import type { ReservationStatusType } from '@/types'
+import { SiteAnalyticsPanel } from '@/components/analytics/SiteAnalyticsPanel'
 
 const { Text } = Typography
 const { RangePicker } = DatePicker
@@ -299,6 +300,10 @@ export function DashboardPage() {
         </Col>
       </Row>
 
+      <div style={{ marginTop: 16 }}>
+        <SiteAnalyticsPanel title="메인 홈페이지 월별·일별 방문 현황" />
+      </div>
+
       {/* 차트 영역 */}
       <Row gutter={[16, 16]} style={{ marginTop: 16 }}>
         {/* 매출 추이 차트 */}
@@ -344,7 +349,7 @@ export function DashboardPage() {
                       tickFormatter={(value) => value >= 10000 ? `${(value / 10000).toFixed(0)}만` : value}
                     />
                     <Tooltip
-                      formatter={((value: number | undefined, name: string | undefined) => {
+                      formatter={(value, name) => {
                         const labels: Record<string, string> = {
                           revenue: '매출액',
                           refundAmount: '환불액',
@@ -352,8 +357,9 @@ export function DashboardPage() {
                           netRevenue: '순매출',
                           settlementAmount: '정산액',
                         }
-                        return [formatAmount(value || 0), labels[name || ''] || name]
-                      }) as any}
+                        const metricName = String(name || '')
+                        return [formatAmount(Number(value || 0)), labels[metricName] || metricName]
+                      }}
                       labelFormatter={(label) => `${label}`}
                       contentStyle={{ fontSize: 12 }}
                     />

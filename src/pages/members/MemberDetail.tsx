@@ -36,6 +36,7 @@ import {
   addDaycareMemo,
   deleteDaycareMemo,
   getDaycareDocuments,
+  deleteDaycareSafely,
 } from '@/services/daycareService'
 import { formatDateTime, formatPhoneNumber } from '@/utils/format'
 import { DAYCARE_STATUS_LABEL, DAYCARE_STATUS_COLOR } from '@/constants'
@@ -55,6 +56,8 @@ export function MemberDetailPage() {
   const [rejectReason, setRejectReason] = useState('')
   const [revisionReason, setRevisionReason] = useState('')
   const [memoContent, setMemoContent] = useState('')
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false)
+  const [deleteConfirmation, setDeleteConfirmation] = useState('')
 
   // 어린이집 상세 조회
   const { data: daycare, isLoading } = useQuery({
@@ -113,6 +116,19 @@ export function MemberDetailPage() {
     },
     onError: () => {
       message.error('메모 삭제에 실패했습니다')
+    },
+  })
+
+  const deleteMemberMutation = useMutation({
+    mutationFn: () => deleteDaycareSafely(id!, deleteConfirmation),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['daycares'] })
+      await queryClient.invalidateQueries({ queryKey: ['dashboard'] })
+      message.success('회원이 삭제되었습니다')
+      navigate('/members', { replace: true })
+    },
+    onError: (error: Error) => {
+      message.error(error.message || '회원 삭제에 실패했습니다')
     },
   })
 
@@ -180,9 +196,21 @@ export function MemberDetailPage() {
       children: (
         <>
           <div style={{ marginBottom: 12, textAlign: 'right' }}>
-            <Button icon={<EditOutlined />} onClick={() => navigate(`/members/${id}/edit`)}>
-              수정
-            </Button>
+            <Space>
+              <Button icon={<EditOutlined />} onClick={() => navigate(`/members/${id}/edit`)}>
+                수정
+              </Button>
+              <Button
+                danger
+                icon={<DeleteOutlined />}
+                onClick={() => {
+                  setDeleteConfirmation('')
+                  setDeleteModalOpen(true)
+                }}
+              >
+                삭제
+              </Button>
+            </Space>
           </div>
           <Descriptions column={2} bordered size="small">
             <Descriptions.Item label="어린이집명">{daycare.name}</Descriptions.Item>
@@ -462,6 +490,45 @@ export function MemberDetailPage() {
             />
           </div>
         )}
+      </Modal>
+
+      <Modal
+        title="회원 삭제"
+        open={deleteModalOpen}
+        okText="회원 삭제"
+        okButtonProps={{
+          danger: true,
+          disabled: deleteConfirmation !== daycare.name,
+        }}
+        confirmLoading={deleteMemberMutation.isPending}
+        closable={!deleteMemberMutation.isPending}
+        maskClosable={false}
+        onOk={() => deleteMemberMutation.mutate()}
+        onCancel={() => {
+          if (deleteMemberMutation.isPending) return
+          setDeleteModalOpen(false)
+          setDeleteConfirmation('')
+        }}
+      >
+        <Typography.Paragraph>
+          삭제하면 이 회원은 회원 목록에서 사라지고 홈페이지에 다시 로그인할 수 없습니다.
+          기존 예약·결제 이력은 운영 기록을 위해 보존됩니다.
+        </Typography.Paragraph>
+        <Typography.Paragraph type="danger">
+          계속하려면 회원명 <Typography.Text strong>{daycare.name}</Typography.Text>을(를) 정확히 입력하세요.
+        </Typography.Paragraph>
+        <Input
+          value={deleteConfirmation}
+          onChange={(event) => setDeleteConfirmation(event.target.value)}
+          onPressEnter={() => {
+            if (deleteConfirmation === daycare.name && !deleteMemberMutation.isPending) {
+              deleteMemberMutation.mutate()
+            }
+          }}
+          disabled={deleteMemberMutation.isPending}
+          placeholder={daycare.name}
+          autoComplete="off"
+        />
       </Modal>
     </div>
   )

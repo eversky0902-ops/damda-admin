@@ -103,8 +103,9 @@ export async function getProducts(
     query = query.ilike('name', `%${search}%`)
   }
 
-  // 정렬 및 페이지네이션
-  query = query.order('display_order', { ascending: true }).order('created_at', { ascending: false }).range(from, to)
+  // 상품관리 목록은 등록일 최신순으로 고정합니다.
+  // 같은 시각에 등록된 상품도 페이지 이동 시 순서가 흔들리지 않도록 ID를 보조 정렬로 사용합니다.
+  query = query.order('created_at', { ascending: false }).order('id', { ascending: false }).range(from, to)
 
   const { data, error, count } = await query
 

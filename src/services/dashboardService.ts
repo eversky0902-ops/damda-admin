@@ -161,12 +161,13 @@ export async function getDashboardStats(): Promise<DashboardStats> {
     supabase.from('products').select('is_visible', { count: 'exact' }),
 
     // 회원 수
-    supabase.from('daycares').select('status', { count: 'exact' }),
+    supabase.from('daycares').select('status', { count: 'exact' }).neq('status', 'deleted'),
 
     // 이번 달 신규 가입
     supabase
       .from('daycares')
       .select('id', { count: 'exact', head: true })
+      .neq('status', 'deleted')
       .gte('created_at', `${firstDayOfMonth}T00:00:00`),
   ])
 

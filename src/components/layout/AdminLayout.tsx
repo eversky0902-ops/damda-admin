@@ -18,7 +18,6 @@ import {
   LockOutlined,
   FormOutlined,
   UserAddOutlined,
-  FileDoneOutlined,
   MenuOutlined,
 } from '@ant-design/icons'
 import { useUIStore } from '@/stores/uiStore'
@@ -110,6 +109,7 @@ const menuItems: MenuProps['items'] = [
       { key: '/content/popups', label: '팝업 관리' },
       { key: '/content/ad-banners', label: '광고 배너' },
       { key: '/content/legal-documents', label: '약관/정책 관리' },
+      { key: '/content/analytics', label: '홈페이지 방문 통계' },
     ],
   },
   {
@@ -120,11 +120,6 @@ const menuItems: MenuProps['items'] = [
       { key: '/settings/service', label: '서비스 설정' },
       { key: '/settings/logs', label: '활동 로그' },
     ],
-  },
-  {
-    key: '/partner-onboardings',
-    icon: <FileDoneOutlined />,
-    label: '입점요청(영업 전용)',
   },
 ]
 
