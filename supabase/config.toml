@@ -1,0 +1,8 @@
+[functions.reconcile-nicepay-refund]
+verify_jwt = false # Handler validates Auth user and active admin independently.
+
+[functions.nicepay-refund-webhook]
+verify_jwt = false # Handler verifies NICEPAY signature AND independently GETs the transaction.
+
+[functions.process-refund]
+verify_jwt = false # Handler verifies the actual user token and active admin; never trusts body.adminId.

@@ -18,6 +18,7 @@ import {
   Card,
   Timeline,
   Typography,
+  Alert,
 } from 'antd'
 import {
   ArrowLeftOutlined,
@@ -38,6 +39,8 @@ import {
   processRefund,
 } from '@/services/reservationService'
 import { useAuthStore } from '@/stores/authStore'
+import { RefundReconciliationButton } from '@/components/RefundReconciliationButton'
+import { canRequestRefund, completedRefundAmount } from '@/utils/refundState'
 import {
   RESERVATION_STATUS_LABEL,
   RESERVATION_STATUS_COLOR,
@@ -62,6 +65,7 @@ export function ReservationDetailPage() {
 
   const [isCancelModalOpen, setIsCancelModalOpen] = useState(false)
   const [isRefundModalOpen, setIsRefundModalOpen] = useState(false)
+  const [refundRequestId, setRefundRequestId] = useState(() => crypto.randomUUID())
   const [isMemoModalOpen, setIsMemoModalOpen] = useState(false)
 
   const [cancelForm] = Form.useForm()
@@ -120,7 +124,13 @@ export function ReservationDetailPage() {
   // 환불 처리
   const refundMutation = useMutation({
     mutationFn: (values: { refund_amount: number; reason: string; admin_memo: string }) =>
-      processRefund(id!, payment!.id, values.refund_amount, values.reason, values.admin_memo, admin!.id),
+      processRefund(id!, payment!.id, values.refund_amount, values.reason, values.admin_memo, admin!.id, refundRequestId),
+    onSettled: () => {
+      // Preflight can recover an existing PG cancellation without sending a new refund.
+      for (const key of ['payment', 'refunds', 'reservation', 'payments', 'paymentStats', 'dailyRevenueDetail']) {
+        queryClient.invalidateQueries({ queryKey: [key] })
+      }
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['reservation', id] })
       queryClient.invalidateQueries({ queryKey: ['payment', id] })
@@ -129,6 +139,7 @@ export function ReservationDetailPage() {
       queryClient.invalidateQueries({ queryKey: ['reservations'] })
       queryClient.invalidateQueries({ queryKey: ['reservationStats'] })
       setIsRefundModalOpen(false)
+      setRefundRequestId(crypto.randomUUID())
       refundForm.resetFields()
       message.success('환불이 처리되었습니다')
     },
@@ -177,6 +188,7 @@ export function ReservationDetailPage() {
   }
 
   const handleRefundSubmit = async () => {
+    if (refundMutation.isPending) return
     try {
       const values = await refundForm.validateFields()
       refundMutation.mutate(values)
@@ -282,8 +294,8 @@ export function ReservationDetailPage() {
   const canConfirm = reservation.status === 'paid'
   const canComplete = reservation.status === 'confirmed'
   const canCancel = ['pending', 'paid', 'confirmed'].includes(reservation.status)
-  const canRefund = payment && payment.status === 'paid' && !['cancelled', 'refunded'].includes(reservation.status)
-  const totalRefunded = refunds?.reduce((sum, r) => sum + r.refund_amount, 0) || 0
+  const canRefund = canRequestRefund(payment, refunds)
+  const totalRefunded = completedRefundAmount(refunds)
   const remainingAmount = payment ? payment.amount - totalRefunded : 0
 
   const tabItems = [
@@ -292,8 +304,13 @@ export function ReservationDetailPage() {
       label: '예약 정보',
       children: (
         <>
+          {['cancelled', 'refunded'].includes(reservation.status) && payment?.status === 'paid' && (
+            <Alert type="warning" showIcon style={{ marginBottom: 12 }} title="취소된 예약의 결제·환불 내역을 확인해주세요."
+              description="PG에서 이미 취소된 건은 ‘PG 취소내역 동기화’로 반영하세요. 새 환불 처리 전에도 PG 취소 내역을 먼저 확인합니다." />
+          )}
           {/* 액션 버튼 */}
-          <div style={{ marginBottom: 12, display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+          <div style={{ marginBottom: 12, display: 'flex', flexWrap: 'wrap', gap: 8, justifyContent: 'flex-end' }}>
+            {payment?.pg_provider === 'nicepay' && payment.pg_tid && <RefundReconciliationButton paymentId={payment.id} />}
             {canConfirm && (
               <Button
                 type="primary"
@@ -321,7 +338,7 @@ export function ReservationDetailPage() {
                 icon={<CloseCircleOutlined />}
                 onClick={() => setIsCancelModalOpen(true)}
               >
-                예약 취소
+                예약만 취소 (환불 별도)
               </Button>
             )}
             {canRefund && remainingAmount > 0 && (
@@ -597,11 +614,13 @@ export function ReservationDetailPage() {
           cancelForm.resetFields()
         }}
         confirmLoading={statusMutation.isPending}
-        okText="취소 처리"
+        okText="예약만 취소"
         okButtonProps={{ danger: true }}
         cancelText="닫기"
       >
         <Form form={cancelForm} layout="vertical">
+          <Alert type="warning" showIcon style={{ marginBottom: 16 }} title="이 작업은 예약 상태만 취소합니다."
+            description="카드 취소·환불은 실행되지 않습니다. PG에서 이미 취소했다면 취소 내역을 동기화하고, 아직 환불하지 않았다면 별도로 환불 처리해주세요." />
           <Form.Item
             name="reason"
             label="취소 사유"

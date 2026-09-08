@@ -1,5 +1,6 @@
 import { supabase } from '@/lib/supabase'
 import { logCreate, logStatusChange } from '@/services/adminLogService'
+import { verifyBeforeRefund } from '@/services/refundReconciliationService'
 import type {
   Payment,
   PaymentStatusType,
@@ -217,9 +218,11 @@ export async function processRefund(
   refundAmount: number,
   reason: string,
   adminMemo: string,
-  adminId: string
+  adminId: string,
+  requestId: string
 ): Promise<Refund> {
   // Edge Function 호출하여 PG 환불 처리
+  await verifyBeforeRefund(paymentId, refundAmount)
   const { data, error } = await supabase.functions.invoke('process-refund', {
     body: {
       paymentId,
@@ -228,6 +231,7 @@ export async function processRefund(
       reason,
       adminMemo,
       adminId,
+      requestId,
     },
   })
 

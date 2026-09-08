@@ -18,6 +18,7 @@ import {
   Card,
   Timeline,
   Typography,
+  Alert,
 } from 'antd'
 import {
   ArrowLeftOutlined,
@@ -29,6 +30,8 @@ import type { ColumnsType } from 'antd/es/table'
 import dayjs from 'dayjs'
 
 import { getPayment, processRefund } from '@/services/paymentService'
+import { RefundReconciliationButton } from '@/components/RefundReconciliationButton'
+import { completedRefundAmount } from '@/utils/refundState'
 import { useAuthStore } from '@/stores/authStore'
 import {
   PAYMENT_STATUS_LABEL,
@@ -53,6 +56,7 @@ export function PaymentDetailPage() {
   const { admin } = useAuthStore()
 
   const [isRefundModalOpen, setIsRefundModalOpen] = useState(false)
+  const [refundRequestId, setRefundRequestId] = useState(() => crypto.randomUUID())
   const [refundForm] = Form.useForm()
 
   // 결제 정보 조회
@@ -71,14 +75,21 @@ export function PaymentDetailPage() {
         values.refund_amount,
         values.reason,
         values.admin_memo,
-        admin!.id
+        admin!.id,
+        refundRequestId
       ),
+    onSettled: () => {
+      for (const key of ['payment', 'refunds', 'reservation', 'payments', 'paymentStats', 'dailyRevenueDetail']) {
+        queryClient.invalidateQueries({ queryKey: [key] })
+      }
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['payment', id] })
       queryClient.invalidateQueries({ queryKey: ['payments'] })
       queryClient.invalidateQueries({ queryKey: ['paymentStats'] })
       queryClient.invalidateQueries({ queryKey: ['dailyRevenueDetail'] })
       setIsRefundModalOpen(false)
+      setRefundRequestId(crypto.randomUUID())
       refundForm.resetFields()
       message.success('환불이 처리되었습니다')
     },
@@ -88,6 +99,7 @@ export function PaymentDetailPage() {
   })
 
   const handleRefundSubmit = async () => {
+    if (refundMutation.isPending) return
     try {
       const values = await refundForm.validateFields()
       refundMutation.mutate(values)
@@ -198,7 +210,7 @@ export function PaymentDetailPage() {
   const reservation = payment.reservation
   // 환불은 예약내역 상세에서만 처리
   // const canRefund = payment.status === 'paid' && reservation && !['cancelled', 'refunded'].includes(reservation.status)
-  const totalRefunded = payment.refunds?.reduce((sum, r) => sum + r.refund_amount, 0) || 0
+  const totalRefunded = completedRefundAmount(payment.refunds)
   const remainingAmount = payment.amount - totalRefunded
 
   const tabItems = [
@@ -207,8 +219,13 @@ export function PaymentDetailPage() {
       label: '결제 정보',
       children: (
         <>
+          {reservation && ['cancelled', 'refunded'].includes(reservation.status) && payment.status === 'paid' && (
+            <Alert type="warning" showIcon style={{ marginBottom: 12 }} title="예약 취소와 결제 환불 상태가 다릅니다."
+              description="PG에서 이미 취소했다면 먼저 ‘PG 취소내역 동기화’를 실행하세요. 예약 취소만으로 환불액이 자동 반영되지는 않습니다." />
+          )}
           {/* 액션 버튼 */}
           <div style={{ marginBottom: 12, display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+            {payment.pg_provider === 'nicepay' && payment.pg_tid && <RefundReconciliationButton paymentId={payment.id} />}
             {/* 환불은 예약내역 상세에서만 처리 */}
             {/* {canRefund && remainingAmount > 0 && (
               <Button
