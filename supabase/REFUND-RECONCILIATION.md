@@ -17,6 +17,14 @@ Example: 100,000 KRW paid / 70,000 KRW refunded / 12,000 KRW commission / 18,000
 estimated partner settlement. Cross-month reversals are reflected in the refund month;
 historical payment dates and actual payouts are not rewritten.
 
+Clarified-policy rollout: 63 tests passed (19 dashboard + existing 44 refund tests),
+TypeScript, targeted ESLint and isolated Vite build passed. Deployed isolated admin
+release 4db767f to Vercel dpl_53iZbNwt364ZFe2PaPogbWBtHpzo (production READY).
+The live admin.withdamda.kr dashboard was reloaded and verified to show exactly
+2,000 / 2,000 / 0 / 0 KRW, with the partial/full-refund explanatory text updated.
+This follow-up only changes dashboard estimates: no PG calls, DB migrations,
+historical settlement records or money-moving payout actions were executed.
+
 Local verification: 59 tests passed (15 dashboard, 24 gateway/UI, 17 isolated SQL,
 3 webhook forwarding). Admin TypeScript/targeted ESLint/Vite build and all three Edge
 Function type checks passed. Live endpoint checks returned 401 for missing/invalid token,
