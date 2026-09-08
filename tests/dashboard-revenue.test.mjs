@@ -17,14 +17,14 @@ const calculate = (payments, refunds) => calculateDashboardRevenue('2026-09-01',
 
 for (const [label, amount, expectedSettlement] of [
   ['정상 거래 / 환불 불가', 0, 176000],
-  ['10일 전 전액 환불', 200000, -24000],
+  ['10일 전 전액 환불', 200000, 0],
   ['9~7일 전 70% 환불', 140000, 36000],
   ['6~5일 전 50% 환불', 100000, 76000],
   ['4~3일 전 30% 환불: 사용자 예시', 60000, 116000],
 ]) {
   test(label, () => {
     const result = total(calculate([payment()], amount ? [refund(amount)] : []))
-    assert.deepEqual(result, { revenue: 200000, refund: amount, platform: 24000, settlement: expectedSettlement })
+    assert.deepEqual(result, { revenue: 200000, refund: amount, platform: amount === 200000 ? 0 : 24000, settlement: expectedSettlement })
     assert.equal(result.revenue, result.refund + result.platform + result.settlement)
   })
 }
@@ -45,11 +45,48 @@ test('지난달 결제의 이번달 환불은 원거래액·수수료를 중복 
   assert.equal(total(august).settlement + total(calculate([p], refunds)).settlement, total(both).settlement)
 })
 
-test('순차 부분환불 후 전액환불도 고정 수수료와 음수 정산을 유지', () => {
+test('순차 부분환불 후 전액환불 시 기존 반올림 수수료를 전액 취소', () => {
   const result = total(calculate([payment({ amount: 13 })], [
     refund(5), refund(8, { id: 'refund-2', refunded_at: '2026-09-04T10:00:00+09:00' }),
   ]))
-  assert.deepEqual(result, { revenue: 13, refund: 13, platform: 2, settlement: -2 })
+  assert.deepEqual(result, { revenue: 13, refund: 13, platform: 0, settlement: 0 })
+})
+
+test('사용자 예시: 10만원 결제 후 7만원 부분환불은 수수료 12000원, 사업자 18000원', () => {
+  assert.deepEqual(total(calculate([payment({ amount: 100000 })], [refund(70000)])),
+    { revenue: 100000, refund: 70000, platform: 12000, settlement: 18000 })
+})
+
+test('운영 전액환불 2건: 매출 2000원, 환불 2000원, 수수료·정산 0원', () => {
+  assert.deepEqual(total(calculate([
+    payment({ amount: 1000, status: 'cancelled' }),
+    payment({ id: 'payment-2', amount: 1000, status: 'cancelled' }),
+  ], [refund(1000), refund(1000, { id: 'refund-2', payment_id: 'payment-2' })])),
+  { revenue: 2000, refund: 2000, platform: 0, settlement: 0 })
+})
+
+test('월을 넘긴 전액환불은 완료월에 수수료를 한 번만 차감하고 기간별 합계가 일치', () => {
+  const p = payment({ amount: 100000, paid_at: '2026-08-30T10:00:00+09:00' })
+  const refunds = [
+    refund(70000, { refunded_at: '2026-08-31T10:00:00+09:00' }),
+    refund(30000, { id: 'final' }),
+    refund(0, { id: 'zero', refunded_at: '2026-09-04T10:00:00+09:00' }),
+  ]
+  const august = total(calculateDashboardRevenue('2026-08-01', '2026-08-31', [p], refunds))
+  const september = total(calculate([p], refunds))
+  const both = total(calculateDashboardRevenue('2026-08-01', '2026-09-30', [p], refunds))
+  assert.deepEqual(august, { revenue: 100000, refund: 70000, platform: 12000, settlement: 18000 })
+  assert.deepEqual(september, { revenue: 0, refund: 30000, platform: -12000, settlement: -18000 })
+  assert.deepEqual(both, { revenue: 100000, refund: 100000, platform: 0, settlement: 0 })
+  for (const key of Object.keys(both)) assert.equal(august[key] + september[key], both[key])
+  assert.deepEqual(total(calculateDashboardRevenue('2026-09-04', '2026-09-30', [p], refunds)),
+    { revenue: 0, refund: 0, platform: 0, settlement: 0 })
+})
+
+test('취소 상태만으로는 수수료 면제하지 않고 완료된 전액환불만 반영', () => {
+  const p = payment({ status: 'cancelled' })
+  assert.equal(total(calculate([p], [])).platform, 24000)
+  assert.equal(total(calculate([p], [refund(200000, { status: 'pending' })])).platform, 24000)
 })
 
 test('원 단위 반올림은 거래별로 적용하고 정산 잔액과 1원도 어긋나지 않음', () => {

@@ -7,7 +7,15 @@ Both payments now have one completed 1,000 KRW refund each. PG signature, origin
 TID/order/amount, full cancellation and timestamps were independently verified by GET.
 No PG approval or cancellation POST was issued for this incident.
 Repetition returned insertedCount 0 for both. Admin UI was verified with 2,000 KRW gross,
-2,000 KRW refunds, 240 KRW fixed commission and -240 KRW estimated settlement.
+2,000 KRW refunds, 240 KRW fixed commission and -240 KRW estimated settlement under
+the initial policy. The user subsequently clarified: FULL refunds waive the commission;
+PARTIAL refunds retain 12% of the original payment (not the remaining balance).
+The corrected dashboard reverses the original rounded fee exactly once on the date
+cumulative completed refunds reach the original payment. Expected incident totals are
+2,000 KRW gross / 2,000 KRW refunds / 0 KRW commission / 0 KRW estimated settlement.
+Example: 100,000 KRW paid / 70,000 KRW refunded / 12,000 KRW commission / 18,000 KRW
+estimated partner settlement. Cross-month reversals are reflected in the refund month;
+historical payment dates and actual payouts are not rewritten.
 
 Local verification: 59 tests passed (15 dashboard, 24 gateway/UI, 17 isolated SQL,
 3 webhook forwarding). Admin TypeScript/targeted ESLint/Vite build and all three Edge
@@ -68,7 +76,8 @@ both recordedPaidAt (DB concurrency snapshot) and paidAt (signed PG time). DB pa
    paid time, cancellation IDs/times, and balance. It calls no NICEPAY cancel/approval API.
 9. Confirm recorded refund rows, timestamps, payment/reservation statuses and private audit.
    Repeat synchronization: insertedCount must be 0. Refresh dashboard and confirm totals
-   in the refund-date period. Original payment amounts/dates and fixed 12% commission remain.
+   in the refund-date period. Original payment amounts/dates remain. Partial refunds retain
+   the original 12% fee; completed full refunds reverse that fee on the full-refund date.
 
 ## Safety boundaries / remaining verification
 

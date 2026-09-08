@@ -74,7 +74,7 @@ function assertAmount(amount: number) {
 }
 
 // Integer won, rounded once per original payment. The agreed platform fee
-// remains payable even after a partial or full refund.
+// remains payable after partial refunds, but is reversed once fully refunded.
 function commission(amount: number): number {
   if (!Number.isSafeInteger(amount * DASHBOARD_COMMISSION_RATE)) {
     throw new Error('집계 가능한 금액 범위를 초과했습니다.')
@@ -139,6 +139,10 @@ export function calculateDashboardRevenue(
     const day = dayFor(time)
     if (day) {
       day.refundAmount += refund.refund_amount
+      // Reverse the original rounded fee exactly once, on the date cumulative
+      // completed refunds reach the original payment. This keeps daily/monthly
+      // totals additive without rewriting the historical payment date.
+      if (before > 0 && after === 0) day.netRevenue -= commission(payment.amount)
     }
   }
 
