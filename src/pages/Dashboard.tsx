@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { Row, Col, Card, Statistic, Table, Tag, Spin, Progress, List, Typography, DatePicker, Button, Space, Tooltip as AntTooltip } from 'antd'
+import { Alert, Row, Col, Card, Statistic, Table, Tag, Spin, Progress, List, Typography, DatePicker, Button, Space, Tooltip as AntTooltip } from 'antd'
 import {
   DollarOutlined,
   RiseOutlined,
@@ -97,11 +97,19 @@ export function DashboardPage() {
   })
 
   // 일별 매출 추이 (세분화)
-  const { data: revenueResult, isLoading: revenueLoading } = useQuery({
-    queryKey: ['dailyRevenueDetail', startDateStr, endDateStr],
+  const { data: revenueResult, isLoading: revenueLoading, error: revenueError, refetch: refetchRevenue } = useQuery({
+    queryKey: ['dailyRevenueDetail', 'fixed-original-12-percent', startDateStr, endDateStr],
     queryFn: () => getDailyRevenueDetail(startDateStr, endDateStr),
   })
-  const dailyRevenueDetail = revenueResult?.data
+  const dailyRevenueDetail = revenueError ? undefined : revenueResult?.data
+  const revenueTotals = dailyRevenueDetail?.reduce((sum, day) => ({
+    revenue: sum.revenue + day.revenue,
+    refundAmount: sum.refundAmount + day.refundAmount,
+    netRevenue: sum.netRevenue + day.netRevenue,
+    settlementAmount: sum.settlementAmount + day.settlementAmount,
+    count: sum.count + day.count,
+  }), { revenue: 0, refundAmount: 0, netRevenue: 0, settlementAmount: 0, count: 0 })
+  const formatRevenue = (value: string | number) => revenueError ? '—' : Number(value).toLocaleString()
 
   // 요일별 예약 분포
   const { data: weekdayData } = useQuery({
@@ -219,6 +227,16 @@ export function DashboardPage() {
       </div>
 
       {/* 매출 지표 (날짜 필터 연동) */}
+      {revenueError && (
+        <Alert
+          type="error"
+          showIcon
+          title="매출 통계를 불러오지 못했습니다."
+          description={revenueError.message}
+          action={<Button onClick={() => void refetchRevenue()}>다시 조회</Button>}
+          style={{ marginBottom: 16 }}
+        />
+      )}
       <Row gutter={[16, 16]}>
         <Col xs={24} sm={12} lg={6}>
           <Card size="small" loading={revenueLoading}>
@@ -229,19 +247,19 @@ export function DashboardPage() {
                   매출액
                 </span>
               }
-              value={dailyRevenueDetail?.reduce((sum, d) => sum + d.revenue, 0) || 0}
+              value={revenueTotals?.revenue ?? 0}
               suffix="원"
               valueStyle={{ color: '#1890ff' }}
-              formatter={(value) => Number(value).toLocaleString()}
+              formatter={formatRevenue}
             />
             <div style={{ marginTop: 8, fontSize: 12, color: '#999' }}>
-              {dailyRevenueDetail?.reduce((sum, d) => sum + d.count, 0) || 0}건 결제
+              실제 결제된 예약거래액 · {revenueError ? '—' : revenueTotals?.count ?? 0}건
             </div>
           </Card>
         </Col>
         <Col xs={24} sm={12} lg={6}>
           <Card size="small" loading={revenueLoading}>
-            <AntTooltip title={`취소수수료: ${(dailyRevenueDetail?.reduce((sum, d) => sum + d.cancelFee, 0) || 0).toLocaleString()}원`}>
+            <AntTooltip title="전체 취소·부분환불 중 실제 환불 완료된 금액의 합계입니다. 환불 대기·실패 건은 제외합니다.">
               <Statistic
                 title={
                   <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
@@ -249,14 +267,14 @@ export function DashboardPage() {
                     환불액
                   </span>
                 }
-                value={dailyRevenueDetail?.reduce((sum, d) => sum + d.refundAmount, 0) || 0}
+                value={revenueTotals?.refundAmount ?? 0}
                 suffix="원"
                 valueStyle={{ color: '#ff4d4f' }}
-                formatter={(value) => Number(value).toLocaleString()}
+                formatter={formatRevenue}
               />
             </AntTooltip>
             <div style={{ marginTop: 8, fontSize: 12, color: '#999' }}>
-              취소수수료 {(dailyRevenueDetail?.reduce((sum, d) => sum + d.cancelFee, 0) || 0).toLocaleString()}원 별도
+              전체 취소·부분환불 완료액
             </div>
           </Card>
         </Col>
@@ -269,13 +287,13 @@ export function DashboardPage() {
                   순매출
                 </span>
               }
-              value={dailyRevenueDetail?.reduce((sum, d) => sum + d.netRevenue, 0) || 0}
+              value={revenueTotals?.netRevenue ?? 0}
               suffix="원"
               valueStyle={{ color: '#52c41a' }}
-              formatter={(value) => Number(value).toLocaleString()}
+              formatter={formatRevenue}
             />
             <div style={{ marginTop: 8, fontSize: 12, color: '#999' }}>
-              매출액 - 환불액
+              담다 수익 · 최초 결제액 × 12% (환불 시에도 유지)
             </div>
           </Card>
         </Col>
@@ -288,17 +306,24 @@ export function DashboardPage() {
                   정산액
                 </span>
               }
-              value={dailyRevenueDetail?.reduce((sum, d) => sum + d.settlementAmount, 0) || 0}
+              value={revenueTotals?.settlementAmount ?? 0}
               suffix="원"
               valueStyle={{ color: '#722ed1' }}
-              formatter={(value) => Number(value).toLocaleString()}
+              formatter={formatRevenue}
             />
             <div style={{ marginTop: 8, fontSize: 12, color: '#999' }}>
-              사업주 정산 금액
+              사업주 정산 예상액 · 매출액 − 환불액 − 순매출
             </div>
           </Card>
         </Col>
       </Row>
+
+      <div style={{ marginTop: 12, fontSize: 12, color: '#666' }}>
+        결제는 결제일, 환불은 환불 완료일(한국 시간) 기준으로 반영됩니다.
+        순매출은 최초 실제 결제액의 12%를 거래별로 원 단위 반올림하며, 환불 시에도 유지됩니다.
+        정산액은 실제 지급 완료액과 다른 예상액입니다.
+        이전 기간 결제의 환불이나 전액 환불로 정산액이 음수가 되면 차감액으로 표시됩니다.
+      </div>
 
       <div style={{ marginTop: 16 }}>
         <SiteAnalyticsPanel title="메인 홈페이지 월별·일별 방문 현황" />
@@ -313,6 +338,8 @@ export function DashboardPage() {
               <div style={{ textAlign: 'center', padding: 100 }}>
                 <Spin />
               </div>
+            ) : revenueError ? (
+              <Text type="secondary">매출 통계를 다시 조회해주세요.</Text>
             ) : (
               <>
                 {/* 범례 */}
@@ -321,10 +348,10 @@ export function DashboardPage() {
                     <span style={{ width: 12, height: 3, background: '#1890ff', borderRadius: 2 }} />
                     매출액
                   </span>
-                  <AntTooltip title="환불액에는 취소수수료가 제외된 실제 환불 금액입니다">
+                  <AntTooltip title="전체 취소·부분환불 중 실제 환불 완료된 금액입니다">
                     <span style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 12, cursor: 'help' }}>
                       <span style={{ width: 12, height: 3, background: '#ff4d4f', borderRadius: 2 }} />
-                      환불액 (취소수수료 별도)
+                      환불액
                     </span>
                   </AntTooltip>
                   <span style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 12 }}>
@@ -353,7 +380,6 @@ export function DashboardPage() {
                         const labels: Record<string, string> = {
                           revenue: '매출액',
                           refundAmount: '환불액',
-                          cancelFee: '취소수수료',
                           netRevenue: '순매출',
                           settlementAmount: '정산액',
                         }

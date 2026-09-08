@@ -125,6 +125,7 @@ export function ReservationDetailPage() {
       queryClient.invalidateQueries({ queryKey: ['reservation', id] })
       queryClient.invalidateQueries({ queryKey: ['payment', id] })
       queryClient.invalidateQueries({ queryKey: ['refunds', id] })
+      queryClient.invalidateQueries({ queryKey: ['dailyRevenueDetail'] })
       queryClient.invalidateQueries({ queryKey: ['reservations'] })
       queryClient.invalidateQueries({ queryKey: ['reservationStats'] })
       setIsRefundModalOpen(false)

@@ -1,5 +1,13 @@
 import { supabase } from '@/lib/supabase'
-import { getSetting } from '@/services/settingsService'
+import {
+  calculateDashboardRevenue,
+  DASHBOARD_COMMISSION_RATE,
+  fetchRevenuePages,
+  revenueDateBounds,
+  type DailyRevenueDetailData,
+  type RevenuePayment,
+  type RevenueRefund,
+} from '@/utils/dashboardRevenue'
 import type { Reservation } from '@/types'
 import dayjs from 'dayjs'
 
@@ -37,18 +45,7 @@ export interface DailyRevenueData {
   count: number
 }
 
-// 일별 매출 세분화 데이터
-export interface DailyRevenueDetailData {
-  date: string
-  displayDate: string
-  revenue: number          // 매출액 (결제 완료)
-  refundAmount: number     // 환불액
-  cancelFee: number        // 취소수수료 (매출액 - 환불액)
-  netRevenue: number       // 순매출 (매출 - 환불)
-  platformFee: number      // 플랫폼 수익 (매출액 × 수수료율, 전체취소 시 0)
-  settlementAmount: number // 정산액 (취소위약금 - 플랫폼수익)
-  count: number            // 결제 건수
-}
+export type { DailyRevenueDetailData } from '@/utils/dashboardRevenue'
 
 // 일별 매출 세분화 결과 (수수료율 포함)
 export interface DailyRevenueDetailResult {
@@ -271,113 +268,61 @@ export async function getDailyRevenueDetail(
   startDate: string,
   endDate: string
 ): Promise<DailyRevenueDetailResult> {
-  const [paymentsData, refundsData, commissionSetting] = await Promise.all([
-    // 결제 완료 데이터 (환불 처리된 건도 매출에 포함)
-    supabase
+  const { start, endExclusive } = revenueDateBounds(startDate, endDate)
+  const [payments, refundsInPeriod] = await Promise.all([
+    // Keep the original transaction even if it has since been cancelled.
+    fetchRevenuePages<RevenuePayment>((from, to) => supabase
       .from('payments')
-      .select('amount, paid_at')
+      .select('id, amount, paid_at, status')
       .in('status', ['paid', 'cancelled'])
       .not('paid_at', 'is', null)
-      .gte('paid_at', `${startDate}T00:00:00+09:00`)
-      .lte('paid_at', `${endDate}T23:59:59+09:00`)
-      .order('paid_at', { ascending: true }),
-
-    // 환불 완료 데이터
-    supabase
+      .gte('paid_at', start)
+      .lt('paid_at', endExclusive)
+      .order('paid_at', { ascending: true })
+      .order('id', { ascending: true })
+      .range(from, to)),
+    fetchRevenuePages<RevenueRefund>((from, to) => supabase
       .from('refunds')
-      .select('refund_amount, original_amount, refunded_at')
+      .select('id, payment_id, refund_amount, refunded_at, status')
       .eq('status', 'completed')
-      .gte('refunded_at', `${startDate}T00:00:00+09:00`)
-      .lte('refunded_at', `${endDate}T23:59:59+09:00`)
-      .order('refunded_at', { ascending: true }),
-
-    // 플랫폼 수수료율 설정
-    getSetting('default_commission_rate'),
+      .gte('refunded_at', start)
+      .lt('refunded_at', endExclusive)
+      .order('refunded_at', { ascending: true })
+      .order('id', { ascending: true })
+      .range(from, to)),
   ])
 
-  if (paymentsData.error) throw new Error(paymentsData.error.message)
-  if (refundsData.error) throw new Error(refundsData.error.message)
-
-  // 날짜별로 집계
-  const dailyMap = new Map<string, {
-    revenue: number
-    refundAmount: number
-    cancelFee: number
-    count: number
-  }>()
-
-  // 모든 날짜 초기화
-  const start = new Date(startDate)
-  const end = new Date(endDate)
-  const dayCount = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1
-
-  for (let i = 0; i < dayCount; i++) {
-    const date = new Date(start)
-    date.setDate(date.getDate() + i)
-    const dateStr = date.toISOString().split('T')[0]
-    dailyMap.set(dateStr, { revenue: 0, refundAmount: 0, cancelFee: 0, count: 0 })
+  // Include original payments and earlier partial refunds to validate the
+  // cumulative refund, including refunds for payments from a prior period.
+  const paymentMap = new Map(payments.map(payment => [payment.id, payment]))
+  const refundedPaymentIds = [...new Set(refundsInPeriod.map(refund => refund.payment_id))]
+  const refundHistory: RevenueRefund[] = []
+  for (let offset = 0; offset < refundedPaymentIds.length; offset += 100) {
+    const ids = refundedPaymentIds.slice(offset, offset + 100)
+    const [originalPayments, history] = await Promise.all([
+      fetchRevenuePages<RevenuePayment>((from, to) => supabase
+        .from('payments')
+        .select('id, amount, paid_at, status')
+        .in('id', ids)
+        .order('id', { ascending: true })
+        .range(from, to)),
+      fetchRevenuePages<RevenueRefund>((from, to) => supabase
+        .from('refunds')
+        .select('id, payment_id, refund_amount, refunded_at, status')
+        .in('payment_id', ids)
+        .eq('status', 'completed')
+        .lt('refunded_at', endExclusive)
+        .order('refunded_at', { ascending: true })
+        .order('id', { ascending: true })
+        .range(from, to)),
+    ])
+    originalPayments.forEach(payment => paymentMap.set(payment.id, payment))
+    refundHistory.push(...history)
   }
-
-  // UTC → KST 날짜 변환 헬퍼
-  const toKSTDateStr = (utcStr: string) => {
-    const d = new Date(utcStr)
-    d.setHours(d.getHours() + 9)
-    return d.toISOString().split('T')[0]
+  return {
+    data: calculateDashboardRevenue(startDate, endDate, [...paymentMap.values()], refundHistory),
+    commissionRate: DASHBOARD_COMMISSION_RATE,
   }
-
-  // 결제 데이터 집계
-  paymentsData.data?.forEach((row) => {
-    if (row.paid_at) {
-      const dateStr = toKSTDateStr(row.paid_at)
-      const existing = dailyMap.get(dateStr)
-      if (existing) {
-        existing.revenue += row.amount || 0
-        existing.count += 1
-      }
-    }
-  })
-
-  // 환불 데이터 집계
-  refundsData.data?.forEach((row) => {
-    if (row.refunded_at) {
-      const dateStr = toKSTDateStr(row.refunded_at)
-      const existing = dailyMap.get(dateStr)
-      if (existing) {
-        existing.refundAmount += row.refund_amount || 0
-        // 취소수수료 = 원래금액 - 환불금액
-        existing.cancelFee += (row.original_amount || 0) - (row.refund_amount || 0)
-      }
-    }
-  })
-
-  // 결과 변환 - DB에서 수수료율 조회 (fallback 10%)
-  const commissionRatePercent = commissionSetting?.value
-    ? Number(typeof commissionSetting.value === 'string' ? JSON.parse(commissionSetting.value) : commissionSetting.value)
-    : 10
-  const platformCommissionRate = commissionRatePercent / 100
-
-  const data = Array.from(dailyMap.entries()).map(([date, d]) => {
-    // 순매출: 매출액 - 환불액
-    const netRevenue = d.revenue - d.refundAmount
-    // 플랫폼 수수료: 매출액 × 수수료율
-    const platformFee = d.revenue > 0 ? Math.round(d.revenue * platformCommissionRate) : 0
-    // 정산액: 순매출 - 플랫폼수수료
-    const settlementAmount = netRevenue - platformFee
-
-    return {
-      date,
-      displayDate: `${parseInt(date.split('-')[1])}/${parseInt(date.split('-')[2])}`,
-      revenue: d.revenue,
-      refundAmount: d.refundAmount,
-      cancelFee: d.cancelFee,
-      netRevenue: d.revenue - d.refundAmount,
-      platformFee,
-      settlementAmount: Math.max(0, settlementAmount),
-      count: d.count,
-    }
-  })
-
-  return { data, commissionRate: commissionRatePercent }
 }
 
 // 요일별 예약 분포

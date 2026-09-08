@@ -77,6 +77,7 @@ export function PaymentDetailPage() {
       queryClient.invalidateQueries({ queryKey: ['payment', id] })
       queryClient.invalidateQueries({ queryKey: ['payments'] })
       queryClient.invalidateQueries({ queryKey: ['paymentStats'] })
+      queryClient.invalidateQueries({ queryKey: ['dailyRevenueDetail'] })
       setIsRefundModalOpen(false)
       refundForm.resetFields()
       message.success('환불이 처리되었습니다')
