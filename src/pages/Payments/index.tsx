@@ -18,6 +18,7 @@ import {
   DATETIME_FORMAT,
 } from '@/constants'
 import type { PaymentStatusType } from '@/types'
+import { PaymentRecovery } from '@/components/payments/PaymentRecovery'
 
 const { RangePicker } = DatePicker
 
@@ -185,6 +186,7 @@ export function PaymentsPage() {
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 16 }}>
         <h2 style={{ margin: 0 }}>결제 관리</h2>
+        <PaymentRecovery />
         <Dropdown menu={{ items: downloadMenuItems }} placement="bottomRight">
           <Button icon={<DownloadOutlined />}>엑셀 다운로드</Button>
         </Dropdown>

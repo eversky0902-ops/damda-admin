@@ -173,6 +173,9 @@ export async function updatePaymentStatus(
   id: string,
   status: PaymentStatusType
 ): Promise<Payment> {
+  if (status === 'paid') {
+    throw new Error('결제 완료는 NICEPAY 거래 재조회와 서버 검증을 거쳐야 합니다. 주문번호와 TID로 결제 복구를 요청해주세요.')
+  }
   // 변경 전 데이터 조회
   const { data: beforeData } = await supabase
     .from('payments')
@@ -185,9 +188,6 @@ export async function updatePaymentStatus(
     updated_at: new Date().toISOString(),
   }
 
-  if (status === 'paid') {
-    updateData.paid_at = new Date().toISOString()
-  }
 
   const { data, error } = await supabase
     .from('payments')
